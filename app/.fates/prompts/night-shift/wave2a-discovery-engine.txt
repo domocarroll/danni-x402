@@ -1,0 +1,84 @@
+Build Wave 2A: Discovery Engine. Create the conversational discovery layer where Danni (LLM-powered) interviews the client, building a SemanticWeb in real-time.
+
+CONTEXT: Wave 1 just landed. The types contract is at src/lib/types/semantic-web.ts and utilities at src/lib/discovery/web-builder.ts. Import everything from there — do NOT redefine types. The existing swarm at src/lib/swarm/ works and is LOCKED — do not modify it. The LLM provider at src/lib/llm/provider.ts creates a provider with a .complete({ systemPrompt, userMessage }) method.
+
+FILES YOU OWN (edit ONLY these):
+- src/lib/discovery/types.ts (CREATE — session store, discovery state machine types)
+- src/lib/discovery/prompt.ts (CREATE — Danni discovery system prompt + question generation)
+- src/lib/discovery/engine.ts (CREATE — discovery engine: takes answer, returns next question + web updates)
+- src/routes/api/danni/discover/+server.ts (CREATE — POST to start a discovery session)
+- src/routes/api/danni/discover/[sessionId]/+server.ts (CREATE — POST to continue a session with a new answer)
+
+Read CLAUDE.md for conventions. Read src/lib/types/semantic-web.ts for ALL types (SemanticNode, SemanticEdge, SemanticWeb, DiscoverySession, DiscoveryTurn, DiscoveryPhase, ModuleId, etc). Read src/lib/discovery/web-builder.ts for utility functions (createNode, createEdge, mergeWebs, moduleConfidence, parseWebFromJson, formatWebForPrompt).
+
+CRITICAL DESIGN DECISIONS:
+
+1. Danni's discovery questions are LLM-GENERATED, not hardcoded. She uses the current web state + module confidence gaps to decide what to ask next. She is intelligent enough to know what matters.
+
+2. Each discovery turn: client answer + current web → LLM → { newNodes, newEdges, nextQuestion, phase }. The LLM response MUST include a JSON block with nodes/edges AND a natural language question.
+
+3. Discovery phases flow: greeting → exploring → deepening → complete. The engine decides when to advance based on moduleConfidence() scores. When all 4 modules have confidence > 0.6, move to complete.
+
+4. Max 5 turns as safety valve. After 5 turns, force complete regardless of confidence.
+
+5. Session storage: in-memory Map<string, DiscoverySession>. Sessions expire after 30 minutes.
+
+6. Danni's voice in discovery: sophisticated, warm, pattern-recognition. She is the world's best strategic advisor. Reference the personality — never robotic, never corporate. Signature: "I've noticed something fascinating...", "What intrigues me most...", "The space between..."
+
+IMPLEMENTATION:
+
+src/lib/discovery/types.ts:
+- DiscoveryRequest: { sessionId?: string; answer?: string; brief?: string }
+- DiscoveryResponse: { sessionId: string; phase: DiscoveryPhase; question: string; web: SemanticWeb; moduleConfidence: Record<ModuleId, number>; turnNumber: number; isComplete: boolean }
+- SessionStore class: Map-based with get/set/create/cleanup methods, 30-minute TTL
+
+src/lib/discovery/prompt.ts:
+- buildDiscoverySystemPrompt(): returns the Danni discovery persona prompt
+- buildTurnUserMessage(session: DiscoverySession, answer: string): formats current web + answer for LLM
+- The system prompt MUST instruct the LLM to output:
+  1. Natural language question/response (Danni's voice)
+  2. A ```json block with { nodes: SemanticNode[], edges: SemanticEdge[], nextQuestion: string, phase: DiscoveryPhase }
+- The system prompt must explain node types (fact, insight, tension, opportunity, question, framework), sources (client, danni), modules (/strategy, /creative, /synthesize, /validate), and edge relationships
+
+src/lib/discovery/engine.ts:
+- processDiscoveryTurn(session: DiscoverySession, answer: string): Promise<DiscoveryResponse>
+- Uses createLLMProvider().complete() to call LLM
+- Parses response with parseWebFromJson()
+- Merges new nodes/edges into session web with mergeWebs()
+- Updates moduleConfidence
+- Handles the greeting phase (first turn — no answer yet, just generate opening question)
+- If turn 5 reached or all modules > 0.6 confidence → set phase to 'complete'
+
+API ENDPOINTS:
+
+POST /api/danni/discover:
+- Body: { brief?: string } (optional seed brief for context)
+- Creates new DiscoverySession
+- Runs greeting turn (generates Danni's opening question)
+- Returns DiscoveryResponse
+
+POST /api/danni/discover/[sessionId]:
+- Body: { answer: string }
+- Loads session, runs discovery turn with answer
+- Returns DiscoveryResponse
+- If session not found → 404
+- If session already complete → return current state with isComplete: true
+
+Both endpoints use zod validation. Both return json() responses (NOT SSE — discovery is request/response).
+
+VERIFICATION:
+- Run `bun run check` after every file created
+- All imports use $lib/ aliases
+- Tab indentation
+- No legacy Svelte syntax anywhere
+- Type-safe: no `as any` except where 3d-force-graph requires it (not in your scope anyway)
+
+DO NOT:
+- Modify src/lib/types/semantic-web.ts or src/lib/discovery/web-builder.ts (Wave 1, locked)
+- Modify src/lib/swarm/ (locked)
+- Modify src/lib/llm/ (locked)
+- Modify src/hooks.server.ts (locked)
+- Modify any frontend files (Wave 2C's scope)
+- Use npm or yarn (use bun)
+- Hardcode discovery questions — LLM generates them
+- Create tests (not enough time — production code only)

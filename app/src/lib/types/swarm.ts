@@ -1,19 +1,21 @@
 import { z } from 'zod';
+import type { SemanticWeb } from './semantic-web.js';
+import { SemanticWebSchema } from './semantic-web.js';
 
-/** Input to the swarm orchestrator */
 export interface SwarmInput {
 	brief: string;
 	brand?: string;
 	industry?: string;
+	web?: SemanticWeb;
 }
 
-/** Output from a single swarm agent */
 export interface AgentOutput {
 	agentName: string;
 	status: 'completed' | 'failed' | 'timeout';
 	output: string;
 	sources: string[];
 	durationMs: number;
+	web?: SemanticWeb;
 }
 
 /** Combined output from the full swarm */
@@ -42,7 +44,8 @@ export const AgentOutputSchema = z.object({
 	status: z.enum(['completed', 'failed', 'timeout']),
 	output: z.string(),
 	sources: z.array(z.string()),
-	durationMs: z.number()
+	durationMs: z.number(),
+	web: SemanticWebSchema.optional()
 });
 
 export const SwarmOutputSchema = z.object({

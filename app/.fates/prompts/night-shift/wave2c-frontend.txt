@@ -1,0 +1,126 @@
+Build Wave 2C: Frontend — Discovery Flow + Web Store + Graph Integration. Add the discovery conversation UI to the chat page, create a reactive web store, and wire the 3D graph to live semantic web data.
+
+CONTEXT: Wave 1 landed types at src/lib/types/semantic-web.ts (SemanticWeb, GraphData, GraphNode, GraphLink, SOURCE_COLORS, EDGE_COLORS, DiscoverySession, etc). Utilities at src/lib/discovery/web-builder.ts (webToGraphData, moduleConfidence, etc). Wave 2A is building discovery API endpoints at /api/danni/discover and /api/danni/discover/[sessionId]. Wave 2B is updating the swarm to emit web_update SSE events. Your job is the frontend that ties it all together.
+
+FILES YOU OWN (edit ONLY these):
+- src/lib/stores/web.svelte.ts (CREATE — reactive semantic web store)
+- src/lib/stores/chat.svelte.ts (UPDATE — add discovery phase state machine)
+- src/routes/chat/+page.svelte (UPDATE — discovery conversation flow before swarm)
+- src/routes/graph/+page.svelte (UPDATE — consume live web data instead of hardcoded demo)
+- src/lib/components/DiscoveryProgress.svelte (CREATE — module confidence bars)
+
+Read CLAUDE.md for conventions. Use Svelte 5 runes ONLY ($state, $derived, $effect, $props). NEVER use legacy syntax (export let, $:, on:click).
+
+DESIGN: Dark theme (#0a0a0a bg, #fafafa text, #6366f1 accent). system-ui font. Scoped styles only.
+
+CRITICAL DESIGN:
+
+1. WEB STORE (src/lib/stores/web.svelte.ts):
+   Create a reactive store using $state/$derived pattern (match existing stores):
+
+   ```
+   function createWebStore() {
+     let web = $state<SemanticWeb>({ nodes: [], edges: [] });
+     let sessionId = $state<string | null>(null);
+     let discoveryPhase = $state<DiscoveryPhase>('greeting');
+
+     const graphData = $derived(webToGraphData(web));
+     const nodeCount = $derived(web.nodes.length);
+     const edgeCount = $derived(web.edges.length);
+     const confidence = $derived(moduleConfidence(web));
+     const isDiscoveryComplete = $derived(discoveryPhase === 'complete');
+
+     function updateWeb(newWeb: SemanticWeb) { web = newWeb; }
+     function addNodes(nodes: SemanticNode[]) { web = { nodes: [...web.nodes, ...nodes], edges: web.edges }; }
+     function addEdges(edges: SemanticEdge[]) { web = { nodes: web.nodes, edges: [...web.edges, ...edges] }; }
+     function reset() { web = { nodes: [], edges: [] }; sessionId = null; discoveryPhase = 'greeting'; }
+
+     return {
+       get web() { return web; },
+       get sessionId() { return sessionId; },
+       set sessionId(v: string | null) { sessionId = v; },
+       get discoveryPhase() { return discoveryPhase; },
+       set discoveryPhase(v: DiscoveryPhase) { discoveryPhase = v; },
+       get graphData() { return graphData; },
+       get nodeCount() { return nodeCount; },
+       get edgeCount() { return edgeCount; },
+       get confidence() { return confidence; },
+       get isDiscoveryComplete() { return isDiscoveryComplete; },
+       updateWeb, addNodes, addEdges, reset
+     };
+   }
+   export const webStore = createWebStore();
+   ```
+
+   Import types from $lib/types/semantic-web.js and webToGraphData, moduleConfidence from $lib/discovery/web-builder.js.
+
+2. CHAT STORE UPDATE (src/lib/stores/chat.svelte.ts):
+   Add a `phase` state: 'idle' | 'discovery' | 'swarm' | 'complete'
+   Add methods: setPhase(phase), getCurrentPhase()
+   This lets the chat page know whether we're in discovery mode or swarm mode.
+
+3. CHAT PAGE UPDATE (src/routes/chat/+page.svelte):
+   The flow becomes:
+   a. User types initial message → start discovery (POST /api/danni/discover with brief)
+   b. Danni asks questions (shown as assistant messages in chat)
+   c. User answers (shown as user messages in chat)
+   d. Each response updates webStore with new web data
+   e. Show DiscoveryProgress component in sidebar during discovery
+   f. When discovery completes → automatically trigger swarm analysis (existing runAnalysis flow, but pass webStore.web)
+   g. Swarm SSE events include web_update → update webStore
+   h. One-shot fallback: if user types a long message (>200 chars) or prefixes with "!", skip discovery and go straight to swarm
+
+   New function: async runDiscovery(brief: string)
+   - POST /api/danni/discover { brief }
+   - Get sessionId, first question, initial web
+   - Update webStore and chatStore
+   - Each subsequent answer: POST /api/danni/discover/[sessionId] { answer }
+   - When isComplete → transition to swarm
+
+   Modify runAnalysis to accept optional web parameter and include it in the POST body to /api/danni/analyze.
+
+4. GRAPH PAGE UPDATE (src/routes/graph/+page.svelte):
+   - Import webStore from $lib/stores/web.svelte
+   - Replace hardcoded buildGraphData() with webStore.graphData
+   - If webStore has no data, show the existing demo data as fallback
+   - Use $effect to reactively update graph when webStore.graphData changes
+   - Keep the existing 3d-force-graph initialization, colors, rotation, legend
+   - Update legend to show SOURCE_COLORS with actual source names
+   - Node colors come from the data (already set by webToGraphData)
+
+5. DISCOVERY PROGRESS COMPONENT (src/lib/components/DiscoveryProgress.svelte):
+   Shows 4 module confidence bars:
+   - /strategy, /creative, /synthesize, /validate
+   - Each bar fills based on confidence (0.0 to 1.0)
+   - Color: #6366f1 (accent)
+   - Shows "Discovery: Turn N of 5" at top
+   - Shows node/edge count at bottom
+   - Use webStore directly (import it)
+   - Props: { turnNumber: number; maxTurns: number }
+
+IMPLEMENTATION ORDER:
+1. Create src/lib/stores/web.svelte.ts
+2. Update src/lib/stores/chat.svelte.ts (add phase state)
+3. Create src/lib/components/DiscoveryProgress.svelte
+4. Update src/routes/chat/+page.svelte (discovery flow)
+5. Update src/routes/graph/+page.svelte (live web data)
+6. Run `bun run check`
+
+SVELTE 5 RULES (CRITICAL):
+- $state(), $derived(), $effect(), $props() ONLY
+- NEVER: export let, $:, on:click, on:submit
+- Use: onclick, onsubmit (lowercase, no colon)
+- Layout snippets: {#snippet name()}...{/snippet} + {@render name()}
+- Component props: let { propName }: { propName: Type } = $props()
+- Stores use getter/setter pattern (see existing stores for reference)
+
+DO NOT:
+- Modify src/lib/types/ (locked — Wave 1)
+- Modify src/lib/discovery/web-builder.ts (locked — Wave 1)
+- Modify src/lib/swarm/ (locked — Wave 2B)
+- Modify src/lib/llm/ (locked)
+- Modify src/hooks.server.ts (locked)
+- Modify API routes except where specified above
+- Use any CSS framework (Tailwind, etc.) — scoped styles only
+- Use npm/yarn (use bun)
+- Use legacy Svelte syntax
