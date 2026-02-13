@@ -6,19 +6,19 @@
 </script>
 
 <div class="app">
-	<nav>
+	<nav aria-label="Main navigation">
 		<div class="nav-inner">
 			<div class="nav-left">
-				<a href="/" class="nav-brand">Danni</a>
-				<div class="nav-links">
+				<a href="/" class="nav-brand" aria-label="Danni home">Danni</a>
+				<div class="nav-links" role="navigation">
 					<a href="/" class:active={page.url.pathname === '/'}>Home</a>
 					<a href="/chat" class:active={page.url.pathname === '/chat'}>Chat</a>
 					<a href="/dashboard" class:active={page.url.pathname === '/dashboard'}>Dashboard</a>
 					<a href="/graph" class:active={page.url.pathname === '/graph'}>Graph</a>
 				</div>
 			</div>
-			<div class="wallet-status">
-				<span class="dot"></span>
+			<div class="wallet-status" role="status" aria-label="Network status: Base Sepolia">
+				<span class="dot" aria-hidden="true"></span>
 				Base Sepolia
 			</div>
 		</div>
@@ -136,5 +136,27 @@
 
 	main {
 		padding-top: 56px;
+	}
+
+	@media (max-width: 600px) {
+		.nav-inner {
+			padding: 0 0.75rem;
+		}
+
+		.nav-left {
+			gap: 1rem;
+		}
+
+		.nav-links {
+			gap: 0.75rem;
+		}
+
+		.nav-links a {
+			font-size: 0.75rem;
+		}
+
+		.wallet-status {
+			font-size: 0.65rem;
+		}
 	}
 </style>

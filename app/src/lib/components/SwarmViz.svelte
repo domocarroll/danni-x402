@@ -3,7 +3,7 @@
 	import AgentCard from './AgentCard.svelte';
 </script>
 
-<div class="swarm-viz">
+<div class="swarm-viz" role="region" aria-label="Swarm activity monitor">
 	<div class="viz-header">
 		<h3>Swarm Activity</h3>
 		{#if swarmStore.isRunning}
@@ -20,7 +20,7 @@
 	{#if swarmStore.synthesis}
 		<div class="synthesis">
 			<div class="synthesis-header">
-				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="1.5">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="1.5" aria-hidden="true">
 					<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
 				</svg>
 				<span>Synthesis</span>

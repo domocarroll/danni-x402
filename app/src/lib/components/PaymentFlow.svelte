@@ -17,7 +17,7 @@
 	const currentIndex = $derived(stepIndex(paymentsStore.paymentStep));
 </script>
 
-<div class="payment-flow">
+<div class="payment-flow" role="region" aria-label="Payment flow status">
 	<div class="flow-header">
 		<h3>Payment Flow</h3>
 		{#if paymentsStore.paymentStep !== 'idle'}
@@ -25,13 +25,13 @@
 		{/if}
 	</div>
 
-	<div class="steps">
+	<div class="steps" role="list" aria-label="Payment steps">
 		{#each steps as step, i}
 			{@const isActive = stepIndex(step.key) === currentIndex}
 			{@const isPast = stepIndex(step.key) < currentIndex}
 			{@const isFuture = stepIndex(step.key) > currentIndex || paymentsStore.paymentStep === 'idle'}
-			<div class="step" class:active={isActive} class:past={isPast} class:future={isFuture}>
-				<div class="step-icon">
+			<div class="step" class:active={isActive} class:past={isPast} class:future={isFuture} role="listitem" aria-label="{step.label}: {isPast ? 'complete' : isActive ? 'in progress' : 'pending'}">
+				<div class="step-icon" aria-hidden="true">
 					{#if isPast}
 						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2">
 							<path d="M5 12l5 5L20 7" />

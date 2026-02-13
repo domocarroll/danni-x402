@@ -279,7 +279,7 @@
 		<div class="messages" bind:this={messagesContainer}>
 			{#if chatStore.messages.length === 0}
 				<div class="empty-state">
-					<div class="empty-icon">
+					<div class="empty-icon" aria-hidden="true">
 						<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1">
 							<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
 						</svg>
@@ -367,10 +367,10 @@
 		</form>
 	</div>
 
-	<aside class="sidebar">
+	<aside class="sidebar" aria-label="Analysis details">
 		<PaymentFlow />
 		<SwarmViz />
-		<div class="economics-card">
+		<div class="economics-card" role="region" aria-label="Pricing breakdown">
 			<h3>Economics</h3>
 			<div class="economics-line">
 				<span>Analysis cost</span>
@@ -770,6 +770,33 @@
 
 		.chat-main {
 			border-right: none;
+		}
+	}
+
+	@media (max-width: 600px) {
+		.messages {
+			padding: 1rem;
+		}
+
+		.input-area {
+			padding: 0.75rem;
+		}
+
+		.empty-state h2 {
+			font-size: 1.2rem;
+		}
+
+		.empty-state p {
+			font-size: 0.8rem;
+		}
+
+		.sidebar {
+			padding: 0.75rem;
+			max-height: 250px;
+		}
+
+		.economics-card {
+			padding: 0.875rem;
 		}
 	}
 </style>

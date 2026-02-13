@@ -31,10 +31,10 @@
 	);
 </script>
 
-<div class="card" class:running={agent.status === 'running'} class:completed={agent.status === 'completed'}>
+<div class="card" class:running={agent.status === 'running'} class:completed={agent.status === 'completed'} role="article" aria-label="{agent.displayName}: {statusLabel}">
 	<div class="header">
 		<div class="name-row">
-			<span class="dot" style:background={statusColor} class:pulse={agent.status === 'running'}></span>
+			<span class="dot" style:background={statusColor} class:pulse={agent.status === 'running'} aria-hidden="true"></span>
 			<span class="name">{agent.displayName}</span>
 		</div>
 		<div class="status-row">
