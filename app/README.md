@@ -154,10 +154,31 @@ All prices are in USDC on Base Sepolia (chain `eip155:84532`). Settlement is imm
 
 ---
 
+## Live Demo
+
+**Production**: [https://danni.subfrac.cloud](https://danni.subfrac.cloud)
+
+```bash
+# Verify live agent card
+curl https://danni.subfrac.cloud/.well-known/agent.json | jq .name
+
+# Verify live MCP tools
+curl -s -X POST https://danni.subfrac.cloud/api/mcp \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | jq '.result.tools[].name'
+
+# Verify live AP2 flow
+curl -s -X POST https://danni.subfrac.cloud/api/a2a \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"SendMessage","params":{"message":{"role":"user","parts":[{"type":"data","mimeType":"application/json","data":{"type":"ap2.mandates.IntentMandate","skillId":"brand-analysis","description":"Analyze Notion"}}]}}}' | jq '.result.task.status.state'
+```
+
+---
+
 ## Getting Started
 
 ```bash
-git clone https://github.com/anthropics/x402-hackathon.git
+git clone https://github.com/domocarroll/danni-x402.git
 cd x402-hackathon/app
 bun install
 cp .env.example .env
@@ -178,7 +199,7 @@ Run:
 bun run dev          # http://localhost:5173
 bun run check        # TypeScript verification (0 errors required)
 bun run build        # Production build
-bun run test         # 136 tests — AP2 schemas, x402-flow, task manager, mandate extraction, MCP tools, ERC-8004, config
+bun run test         # 264 tests across 10 suites — AP2, x402-flow, task manager, mandate extraction, MCP + error classification, ERC-8004, config, data fallbacks, transaction store, semantic web builder
 ```
 
 Register on-chain (requires Base Sepolia ETH for gas):
