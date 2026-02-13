@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { getTransactions } from '$lib/payments/transaction-store.js';
 
 /**
  * GET /api/payments/history
@@ -8,6 +9,5 @@ import type { RequestHandler } from './$types';
  * Returns payment transaction history for display in dashboard.
  */
 export const GET: RequestHandler = async () => {
-	// TODO: Phase 6 - Wire to transaction store
-	return json([]);
+	return json(getTransactions());
 };

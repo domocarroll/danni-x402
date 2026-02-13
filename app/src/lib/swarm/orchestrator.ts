@@ -14,14 +14,17 @@ import { validateSwarmOutput } from '$lib/types/swarm.js';
  * @param input - Strategic brief and configuration
  * @returns Validated SwarmOutput with analysis from all 5 agents
  */
-export async function executeSwarm(input: SwarmInput): Promise<SwarmOutput> {
+export async function executeSwarm(
+	input: SwarmInput,
+	externalTracker?: SubagentTracker
+): Promise<SwarmOutput> {
 	const startTime = Date.now();
 
 	// Create LLM provider (defaults to CLI backend)
 	const provider = createLLMProvider();
 
-	// Create tracker for observability
-	const tracker = new SubagentTracker();
+	// Use external tracker if provided (e.g. StreamingTracker for SSE), else create default
+	const tracker = externalTracker ?? new SubagentTracker();
 
 	// Define the four sub-agents to run in parallel
 	const subAgentTasks = [
@@ -110,9 +113,3 @@ function findAgentOutput(results: AgentOutput[], nameSubstring: string): AgentOu
 	return found;
 }
 
-/**
- * Get the current tracker instance (for Phase 6 SSE streaming)
- */
-export function getTracker(tracker: SubagentTracker): SubagentTracker {
-	return tracker;
-}

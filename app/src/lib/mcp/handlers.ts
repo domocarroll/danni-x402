@@ -4,6 +4,8 @@ import {
 	MarketPulseInputSchema,
 } from '$lib/mcp/tools.js';
 import type { McpToolResult } from '$lib/mcp/tools.js';
+import { executeSwarm } from '$lib/swarm/orchestrator.js';
+import { getFallbackCompetitive, getFallbackMarket } from '$lib/data/index.js';
 
 export async function handleToolCall(
 	name: string,
@@ -24,7 +26,6 @@ export async function handleToolCall(
 	}
 }
 
-// TODO: Phase 6 — wire to executeSwarm()
 async function handleBrandAnalysis(args: Record<string, unknown>): Promise<McpToolResult> {
 	const parsed = BrandAnalysisInputSchema.safeParse(args);
 	if (!parsed.success) {
@@ -34,33 +35,20 @@ async function handleBrandAnalysis(args: Record<string, unknown>): Promise<McpTo
 		};
 	}
 
-	const { brief } = parsed.data;
-
-	return {
-		content: [
-			{
-				type: 'text',
-				text: JSON.stringify(
-					{
-						brief,
-						analysis: {
-							market: { agentName: 'Market Analyst', status: 'completed', output: 'Placeholder — swarm not yet connected', sources: [], durationMs: 0 },
-							competitive: { agentName: 'Competitive Intel', status: 'completed', output: 'Placeholder — swarm not yet connected', sources: [], durationMs: 0 },
-							cultural: { agentName: 'Cultural Resonance', status: 'completed', output: 'Placeholder — swarm not yet connected', sources: [], durationMs: 0 },
-							brand: { agentName: 'Brand Architect', status: 'completed', output: 'Placeholder — swarm not yet connected', sources: [], durationMs: 0 },
-							synthesis: 'Placeholder — swarm not yet connected',
-						},
-						metadata: { agentsUsed: 5, dataSourcesPurchased: 0, totalCostUsd: 100, durationMs: 0, txHashes: [] },
-					},
-					null,
-					2,
-				),
-			},
-		],
-	};
+	try {
+		const result = await executeSwarm({ brief: parsed.data.brief });
+		return {
+			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+		};
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Swarm execution failed';
+		return {
+			content: [{ type: 'text', text: `Error: ${message}` }],
+			isError: true,
+		};
+	}
 }
 
-// TODO: Phase 6 — wire to data broker /api/data/competitive
 async function handleCompetitiveScan(args: Record<string, unknown>): Promise<McpToolResult> {
 	const parsed = CompetitiveScanInputSchema.safeParse(args);
 	if (!parsed.success) {
@@ -70,28 +58,27 @@ async function handleCompetitiveScan(args: Record<string, unknown>): Promise<Mcp
 		};
 	}
 
-	const { brand } = parsed.data;
+	const { brand, competitors } = parsed.data;
 
-	return {
-		content: [
-			{
-				type: 'text',
-				text: JSON.stringify(
-					{
-						brand,
-						competitors: [],
-						sources: [],
-						fetchedAt: new Date().toISOString(),
-					},
-					null,
-					2,
-				),
-			},
-		],
-	};
+	try {
+		const response = await fetch(`http://localhost:5173/api/data/competitive`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ brand, competitors }),
+		});
+		const data = await response.json();
+		return {
+			content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+		};
+	} catch {
+		// Fallback if fetch fails (e.g. during startup)
+		const fallback = getFallbackCompetitive(brand);
+		return {
+			content: [{ type: 'text', text: JSON.stringify(fallback, null, 2) }],
+		};
+	}
 }
 
-// TODO: Phase 6 — wire to data broker /api/data/market
 async function handleMarketPulse(args: Record<string, unknown>): Promise<McpToolResult> {
 	const parsed = MarketPulseInputSchema.safeParse(args);
 	if (!parsed.success) {
@@ -103,24 +90,21 @@ async function handleMarketPulse(args: Record<string, unknown>): Promise<McpTool
 
 	const { industry } = parsed.data;
 
-	return {
-		content: [
-			{
-				type: 'text',
-				text: JSON.stringify(
-					{
-						industry,
-						marketSize: 'Pending data broker connection',
-						growthRate: 'Pending data broker connection',
-						trends: [],
-						keyPlayers: [],
-						sources: [],
-						fetchedAt: new Date().toISOString(),
-					},
-					null,
-					2,
-				),
-			},
-		],
-	};
+	try {
+		const response = await fetch(`http://localhost:5173/api/data/market`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ industry }),
+		});
+		const data = await response.json();
+		return {
+			content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+		};
+	} catch {
+		// Fallback if fetch fails
+		const fallback = getFallbackMarket(industry);
+		return {
+			content: [{ type: 'text', text: JSON.stringify(fallback, null, 2) }],
+		};
+	}
 }

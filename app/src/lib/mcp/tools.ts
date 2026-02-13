@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PRICING, NETWORKS } from '$lib/config/index.js';
+import { PRICING, NETWORKS, FACILITATORS } from '$lib/config/index.js';
 
 // ─── MCP Tool Definition Type ────────────────────────────────────────────────
 
@@ -49,7 +49,7 @@ export type MarketPulseInput = z.infer<typeof MarketPulseInputSchema>;
 
 // ─── MCP Tool Definitions ────────────────────────────────────────────────────
 
-const X402_FACILITATOR = 'https://x402.org/facilitator';
+const X402_FACILITATOR = FACILITATORS.DEFAULT;
 
 export const MCP_TOOLS: McpTool[] = [
 	{

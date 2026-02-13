@@ -5,8 +5,6 @@ export interface SwarmInput {
 	brief: string;
 	brand?: string;
 	industry?: string;
-	dataBrokerBaseUrl: string;
-	walletPrivateKey: string;
 }
 
 /** Output from a single swarm agent */

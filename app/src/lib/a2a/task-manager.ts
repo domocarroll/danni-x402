@@ -1,11 +1,11 @@
 import type {
 	Task,
 	TaskState,
-	TaskStatus,
 	Message,
 	Artifact,
 } from '$lib/a2a/types.js';
 import { TERMINAL_STATES } from '$lib/a2a/types.js';
+import { executeSwarm } from '$lib/swarm/orchestrator.js';
 
 class TaskManager {
 	private tasks = new Map<string, Task>();
@@ -92,7 +92,6 @@ class TaskManager {
 			parts: [{ type: 'text', text: 'Danni is analyzing your brief...' }],
 		});
 
-		// TODO: Phase 6 — wire to executeSwarm()
 		const briefText = task.history
 			.filter((m) => m.role === 'user')
 			.flatMap((m) => m.parts)
@@ -100,50 +99,50 @@ class TaskManager {
 			.map((p) => p.text)
 			.join('\n');
 
-		const resultArtifact: Artifact = {
-			artifactId: crypto.randomUUID(),
-			name: 'brand-analysis',
-			description: 'Strategic brand analysis from Danni',
-			parts: [
-				{
-					type: 'text',
-					text: `Strategic analysis for: "${briefText}"\n\nThis is a placeholder response — the swarm engine (Phase 2) will produce the real analysis with market, competitive, cultural, and brand architecture insights from 5 parallel AI analysts.`,
-				},
-				{
-					type: 'data',
-					mimeType: 'application/json',
-					data: {
-						brief: briefText,
-						analysis: {
-							market: { agentName: 'Market Analyst', status: 'completed', output: 'Placeholder — swarm not yet connected', sources: [], durationMs: 0 },
-							competitive: { agentName: 'Competitive Intel', status: 'completed', output: 'Placeholder — swarm not yet connected', sources: [], durationMs: 0 },
-							cultural: { agentName: 'Cultural Resonance', status: 'completed', output: 'Placeholder — swarm not yet connected', sources: [], durationMs: 0 },
-							brand: { agentName: 'Brand Architect', status: 'completed', output: 'Placeholder — swarm not yet connected', sources: [], durationMs: 0 },
-							synthesis: 'Placeholder — swarm not yet connected',
-						},
-						metadata: {
-							agentsUsed: 5,
-							dataSourcesPurchased: 0,
-							totalCostUsd: 100,
-							durationMs: 0,
-							txHashes: [],
-						},
+		try {
+			const swarmResult = await executeSwarm({ brief: briefText });
+
+			const resultArtifact: Artifact = {
+				artifactId: crypto.randomUUID(),
+				name: 'brand-analysis',
+				description: 'Strategic brand analysis from Danni',
+				parts: [
+					{
+						type: 'text',
+						text: swarmResult.analysis.synthesis,
 					},
-				},
-			],
-		};
+					{
+						type: 'data',
+						mimeType: 'application/json',
+						data: swarmResult,
+					},
+				],
+			};
 
-		this.addArtifact(task.id, resultArtifact);
+			this.addArtifact(task.id, resultArtifact);
 
-		this.addMessage(task.id, {
-			role: 'agent',
-			parts: [{ type: 'text', text: 'Analysis complete. Results attached as artifact.' }],
-		});
+			this.addMessage(task.id, {
+				role: 'agent',
+				parts: [{ type: 'text', text: 'Analysis complete. Results attached as artifact.' }],
+			});
 
-		this.updateStatus(task.id, 'completed', {
-			role: 'agent',
-			parts: [{ type: 'text', text: 'Task completed successfully.' }],
-		});
+			this.updateStatus(task.id, 'completed', {
+				role: 'agent',
+				parts: [{ type: 'text', text: 'Task completed successfully.' }],
+			});
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Swarm execution failed';
+
+			this.addMessage(task.id, {
+				role: 'agent',
+				parts: [{ type: 'text', text: `Analysis failed: ${message}` }],
+			});
+
+			this.updateStatus(task.id, 'failed', {
+				role: 'agent',
+				parts: [{ type: 'text', text: `Task failed: ${message}` }],
+			});
+		}
 
 		return this.tasks.get(task.id)!;
 	}

@@ -2,7 +2,7 @@
 	import { chatStore } from '$lib/stores/chat.svelte';
 	import { swarmStore } from '$lib/stores/swarm.svelte';
 	import { paymentsStore } from '$lib/stores/payments.svelte';
-	import type { AgentOutput } from '$lib/types';
+	import type { SwarmOutput } from '$lib/types';
 	import MessageBubble from '$lib/components/MessageBubble.svelte';
 	import SwarmViz from '$lib/components/SwarmViz.svelte';
 	import PaymentFlow from '$lib/components/PaymentFlow.svelte';
@@ -15,7 +15,7 @@
 		if (!brief || chatStore.isStreaming) return;
 
 		chatStore.sendBrief(brief);
-		runMockFlow(brief);
+		runAnalysis(brief);
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -26,107 +26,169 @@
 		}
 	}
 
-	async function runMockFlow(brief: string) {
+	function agentNameToKey(name: string): 'market' | 'competitive' | 'cultural' | 'brand' | null {
+		if (name.includes('Market')) return 'market';
+		if (name.includes('Competitive')) return 'competitive';
+		if (name.includes('Cultural')) return 'cultural';
+		if (name.includes('Brand')) return 'brand';
+		return null;
+	}
+
+	async function runAnalysis(brief: string) {
 		paymentsStore.reset();
 		swarmStore.reset();
 
+		// Simulate payment flow (x402 handles this server-side; UI shows the steps)
 		paymentsStore.setPaymentStep('challenged');
-		swarmStore.setPhase('payment', 'Processing payment...');
-		await delay(1000);
+		swarmStore.setPhase('payment', 'Processing x402 payment...');
+		await delay(600);
 
 		paymentsStore.setPaymentStep('signing');
-		swarmStore.setPhase('payment', 'Signing transaction...');
-		await delay(1000);
+		swarmStore.setPhase('payment', 'Signing USDC transaction...');
+		await delay(600);
 
 		paymentsStore.setPaymentStep('settling');
-		swarmStore.setPhase('payment', 'Settling on-chain...');
-		await delay(1000);
+		swarmStore.setPhase('payment', 'Settling on Base Sepolia...');
 
-		const mockTxHash = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-		paymentsStore.setPaymentStep('confirmed');
-		paymentsStore.setCurrentTxHash(mockTxHash);
-		await delay(500);
-
-		paymentsStore.addTransaction({
-			id: `tx_${Date.now()}`,
-			txHash: mockTxHash,
-			amount: '$100',
-			service: 'Brand Analysis',
-			network: 'Base Sepolia',
-			timestamp: Date.now(),
-			status: 'confirmed'
-		});
-
-		swarmStore.setPhase('data-acquisition', 'Purchasing market data...');
-		await delay(800);
-
-		swarmStore.setPhase('analysis', 'Agents analyzing...');
-
-		const agentNames = swarmStore.agentNames;
-		for (const name of agentNames) {
-			swarmStore.setAgentStatus(name, 'running');
-			await delay(1200 + Math.random() * 600);
-
-			const mockResult: AgentOutput = {
-				agentName: name,
-				status: 'completed',
-				output: getMockOutput(name, brief),
-				sources: getMockSources(name),
-				durationMs: 1200 + Math.floor(Math.random() * 800)
-			};
-			swarmStore.setAgentResult(name, mockResult);
-		}
-
-		swarmStore.setPhase('synthesis', 'Synthesizing insights...');
-		await delay(1500);
-
-		const synthesisText = `Based on multi-dimensional analysis of "${brief}", three strategic imperatives emerge: (1) Market positioning should leverage the identified whitespace between premium and accessible segments, (2) Competitive differentiation requires investing in the cultural narratives that resonate with emerging audience segments, (3) Brand architecture should evolve toward a more modular expression system that maintains coherence while enabling contextual adaptation.`;
-
-		swarmStore.setSynthesis(synthesisText);
-		swarmStore.setPhase('complete', 'Analysis complete');
-
-		chatStore.receiveResponse({
-			id: chatStore.generateId(),
-			role: 'assistant',
-			content: synthesisText,
-			timestamp: Date.now(),
-			swarmResult: {
-				analysis: {
-					market: { agentName: 'market', status: 'completed', output: getMockOutput('market', brief), sources: getMockSources('market'), durationMs: 1450 },
-					competitive: { agentName: 'competitive', status: 'completed', output: getMockOutput('competitive', brief), sources: getMockSources('competitive'), durationMs: 1620 },
-					cultural: { agentName: 'cultural', status: 'completed', output: getMockOutput('cultural', brief), sources: getMockSources('cultural'), durationMs: 1380 },
-					brand: { agentName: 'brand', status: 'completed', output: getMockOutput('brand', brief), sources: getMockSources('brand'), durationMs: 1550 },
-					synthesis: synthesisText
+		try {
+			const response = await fetch('/api/danni/analyze', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'text/event-stream'
 				},
-				metadata: {
-					agentsUsed: 4,
-					dataSourcesPurchased: 3,
-					totalCostUsd: 115,
-					durationMs: 10200,
-					txHashes: [mockTxHash]
+				body: JSON.stringify({ brief })
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
+				chatStore.setError(errorData.error ?? `HTTP ${response.status}`);
+				swarmStore.setPhase('error', 'Analysis failed');
+				return;
+			}
+
+			if (!response.body) {
+				chatStore.setError('No response body');
+				swarmStore.setPhase('error', 'No response');
+				return;
+			}
+
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder();
+			let buffer = '';
+			let swarmResult: SwarmOutput | null = null;
+
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+
+				buffer += decoder.decode(value, { stream: true });
+
+				// Parse SSE events from buffer
+				const parts = buffer.split('\n\n');
+				buffer = parts.pop() ?? '';
+
+				for (const part of parts) {
+					const eventMatch = part.match(/^event: (.+)$/m);
+					const dataMatch = part.match(/^data: (.+)$/m);
+
+					if (!eventMatch || !dataMatch) continue;
+
+					const eventType = eventMatch[1];
+					let eventData: Record<string, unknown>;
+					try {
+						eventData = JSON.parse(dataMatch[1]);
+					} catch {
+						continue;
+					}
+
+					handleSSEEvent(eventType, eventData);
+
+					if (eventType === 'result') {
+						swarmResult = eventData as unknown as SwarmOutput;
+					}
 				}
 			}
-		});
+
+			// Complete the flow
+			if (swarmResult) {
+				swarmStore.setSynthesis(swarmResult.analysis.synthesis);
+				swarmStore.setPhase('complete', 'Analysis complete');
+
+				chatStore.receiveResponse({
+					id: chatStore.generateId(),
+					role: 'assistant',
+					content: swarmResult.analysis.synthesis,
+					timestamp: Date.now(),
+					swarmResult: {
+						analysis: swarmResult.analysis,
+						metadata: swarmResult.metadata
+					}
+				});
+			} else {
+				chatStore.setError('No result received from swarm');
+				swarmStore.setPhase('error', 'No result');
+			}
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Network error';
+			chatStore.setError(message);
+			swarmStore.setPhase('error', message);
+		}
 	}
 
-	function getMockOutput(agent: string, brief: string): string {
-		const outputs: Record<string, string> = {
-			market: `Market analysis for "${brief}" reveals a $4.2B addressable market with 12% YoY growth. Key opportunity in the mid-premium segment where demand outpaces supply. Three emerging trends: sustainability-driven purchasing, digital-first brand discovery, and community-based loyalty models.`,
-			competitive: `Competitive landscape shows 4 major players with combined 67% market share. The gap exists in authentic storytelling — competitors rely heavily on performance marketing. Differentiation opportunity through owned-media content and strategic partnerships with cultural institutions.`,
-			cultural: `Cultural analysis identifies a shift toward "conscious consumption" in the target demographic. Social listening reveals strong sentiment around transparency and craftsmanship narratives. Opportunity to align brand voice with the emerging "post-aspirational" cultural movement.`,
-			brand: `Brand architecture assessment suggests a masterbrand strategy with sub-brand flexibility. Current positioning is underleveraged — the brand's heritage narrative could command 30-40% price premium. Typography and visual system need modernization while preserving heritage cues.`
-		};
-		return outputs[agent] ?? `Analysis complete for ${agent}.`;
-	}
-
-	function getMockSources(agent: string): string[] {
-		const sources: Record<string, string[]> = {
-			market: ['IBISWorld Industry Report', 'Statista Market Forecast 2026', 'CB Insights Trend Analysis'],
-			competitive: ['SimilarWeb Traffic Data', 'SEMrush Competitor Audit', 'Crunchbase Funding Data'],
-			cultural: ['Reddit Sentiment Analysis', 'Twitter/X Trend Mining', 'Google Trends Regional'],
-			brand: ['Brand Asset Valuator', 'Kantar BrandZ', 'Internal Brand Audit']
-		};
-		return sources[agent] ?? ['Analysis source'];
+	function handleSSEEvent(eventType: string, data: Record<string, unknown>) {
+		switch (eventType) {
+			case 'payment_confirmed': {
+				const txHash = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+				paymentsStore.setPaymentStep('confirmed');
+				paymentsStore.setCurrentTxHash(txHash);
+				paymentsStore.addTransaction({
+					id: `tx_${Date.now()}`,
+					txHash,
+					amount: '$100',
+					service: 'Brand Analysis',
+					network: 'Base Sepolia',
+					timestamp: Date.now(),
+					status: 'confirmed'
+				});
+				swarmStore.setPhase('analysis', 'Swarm activating...');
+				break;
+			}
+			case 'agent_start': {
+				const key = agentNameToKey(data.agentName as string);
+				if (key) {
+					swarmStore.setAgentStatus(key, 'running');
+				} else if ((data.agentName as string)?.includes('Danni')) {
+					swarmStore.setPhase('synthesis', 'Danni synthesizing insights...');
+				}
+				break;
+			}
+			case 'agent_complete': {
+				const key = agentNameToKey(data.agentName as string);
+				if (key) {
+					swarmStore.setAgentResult(key, {
+						agentName: data.agentName as string,
+						status: 'completed',
+						output: `Analysis complete (${data.outputLength} chars)`,
+						sources: [],
+						durationMs: (data.durationMs as number) ?? 0
+					});
+				}
+				break;
+			}
+			case 'agent_fail': {
+				const key = agentNameToKey(data.agentName as string);
+				if (key) {
+					swarmStore.setAgentStatus(key, 'failed');
+				}
+				break;
+			}
+			case 'error': {
+				chatStore.setError((data.message as string) ?? 'Unknown error');
+				swarmStore.setPhase('error', 'Swarm error');
+				break;
+			}
+		}
 	}
 
 	function delay(ms: number): Promise<void> {
