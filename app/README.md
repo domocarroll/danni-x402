@@ -199,7 +199,7 @@ Run:
 bun run dev          # http://localhost:5173
 bun run check        # TypeScript verification (0 errors required)
 bun run build        # Production build
-bun run test         # 264 tests across 10 suites — AP2, x402-flow, task manager, mandate extraction, MCP + error classification, ERC-8004, config, data fallbacks, transaction store, semantic web builder
+bun run test         # 318 tests across 12 suites — AP2, x402-flow, task manager, mandate extraction, MCP + error classification, ERC-8004, config, data fallbacks, transaction store, semantic web builder, A2A handler integration, MCP handler integration
 ```
 
 Register on-chain (requires Base Sepolia ETH for gas):

@@ -158,10 +158,13 @@ export const POST: RequestHandler = async ({ request }) => {
 						parts: [{ type: 'text', text: 'Payment accepted. Resuming analysis on existing context...' }],
 						metadata: buildPaymentMetadata('payment-verified'),
 					});
-				} else {
-					// No contextId or task not found — create fresh task
-					const newTask = taskManager.createTask(message);
-					taskId = newTask.id;
+			} else {
+				// No contextId match, task not found, or task in wrong state — create fresh task
+				if (requestContextId && existingTask && existingTask.status.state !== 'input-required') {
+					console.warn(`[a2a] PaymentMandate contextId=${requestContextId} references task in '${existingTask.status.state}' state (expected input-required). Creating new task.`);
+				}
+				const newTask = taskManager.createTask(message);
+				taskId = newTask.id;
 
 					taskManager.updateStatus(taskId, 'working', {
 						role: 'agent',
@@ -212,9 +215,9 @@ export const POST: RequestHandler = async ({ request }) => {
 								paymentAmount: cartAmount,
 							});
 						}
-					} catch {
-						// Reputation feedback is non-fatal
-					}
+				} catch (repErr) {
+					console.warn('[a2a] Reputation feedback non-fatal error:', repErr instanceof Error ? repErr.message : repErr);
+				}
 
 					const finalTask = taskManager.getTask(completed.id)!;
 					return json(rpcSuccess(id, { task: finalTask }));
