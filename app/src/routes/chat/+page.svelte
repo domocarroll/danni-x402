@@ -2,6 +2,8 @@
 	import { chatStore } from '$lib/stores/chat.svelte';
 	import { swarmStore } from '$lib/stores/swarm.svelte';
 	import { paymentsStore } from '$lib/stores/payments.svelte';
+	import { walletStore } from '$lib/stores/wallet.svelte';
+	import { decodePaymentResponse } from '$lib/x402/client.js';
 	import type { SwarmOutput } from '$lib/types';
 	import MessageBubble from '$lib/components/MessageBubble.svelte';
 	import SwarmViz from '$lib/components/SwarmViz.svelte';
@@ -38,27 +40,85 @@
 		paymentsStore.reset();
 		swarmStore.reset();
 
-		// Simulate payment flow (x402 handles this server-side; UI shows the steps)
+		// Step 1: Ensure wallet is connected
+		if (walletStore.state !== 'connected' || !walletStore.client) {
+			paymentsStore.setPaymentStep('challenged');
+			swarmStore.setPhase('payment', 'Connecting wallet...');
+			await walletStore.connect();
+			if (walletStore.state !== 'connected' || !walletStore.client) {
+				chatStore.setError(walletStore.error ?? 'Wallet connection required for x402 payment');
+				swarmStore.setPhase('error', 'Wallet not connected');
+				paymentsStore.reset();
+				return;
+			}
+		}
+
+		// Step 2: Make initial request — expect 402 Payment Required
 		paymentsStore.setPaymentStep('challenged');
-		swarmStore.setPhase('payment', 'Processing x402 payment...');
-		await delay(600);
-
-		paymentsStore.setPaymentStep('signing');
-		swarmStore.setPhase('payment', 'Signing USDC transaction...');
-		await delay(600);
-
-		paymentsStore.setPaymentStep('settling');
-		swarmStore.setPhase('payment', 'Settling on Base Sepolia...');
+		swarmStore.setPhase('payment', 'Requesting analysis — awaiting x402 challenge...');
 
 		try {
-			const response = await fetch('/api/danni/analyze', {
+			const initialResponse = await fetch('/api/danni/analyze', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					Accept: 'text/event-stream'
+					Accept: 'text/event-stream',
 				},
-				body: JSON.stringify({ brief })
+				body: JSON.stringify({ brief }),
 			});
+
+			let response: Response;
+
+			if (initialResponse.status === 402) {
+				// Step 3: Parse x402 payment requirements from 402 response
+				paymentsStore.setPaymentStep('signing');
+				swarmStore.setPhase('payment', 'Payment required — requesting wallet signature...');
+
+				// Dynamic import of x402 client-side modules
+				const { createPaymentFetch } = await import('$lib/x402/client.js');
+				const payFetch = await createPaymentFetch(walletStore.client!);
+
+				// Step 4: payFetch handles sign + retry automatically
+				paymentsStore.setPaymentStep('settling');
+				swarmStore.setPhase('payment', 'Settling USDC on Base Sepolia...');
+
+				response = await payFetch('/api/danni/analyze', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Accept: 'text/event-stream',
+					},
+					body: JSON.stringify({ brief }),
+				});
+			} else {
+				// No payment required (maybe already paid, or payment disabled)
+				response = initialResponse;
+			}
+
+			// Step 5: Extract settlement receipt from PAYMENT-RESPONSE header
+			const receipt = decodePaymentResponse(
+				response.headers.get('PAYMENT-RESPONSE') ?? response.headers.get('X-PAYMENT-RESPONSE')
+			);
+			const txHash = receipt?.txHash as string | undefined;
+
+			if (txHash) {
+				paymentsStore.setPaymentStep('confirmed');
+				paymentsStore.setCurrentTxHash(txHash);
+				paymentsStore.addTransaction({
+					id: `tx_${Date.now()}`,
+					txHash,
+					amount: '$100',
+					service: 'Brand Analysis',
+					network: 'Base Sepolia',
+					timestamp: Date.now(),
+					status: 'confirmed',
+				});
+			} else {
+				// Payment may have settled but no receipt header — mark as confirmed anyway
+				paymentsStore.setPaymentStep('confirmed');
+			}
+
+			swarmStore.setPhase('analysis', 'Swarm activating...');
 
 			if (!response.ok) {
 				const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
@@ -122,8 +182,8 @@
 					timestamp: Date.now(),
 					swarmResult: {
 						analysis: swarmResult.analysis,
-						metadata: swarmResult.metadata
-					}
+						metadata: swarmResult.metadata,
+					},
 				});
 			} else {
 				chatStore.setError('No result received from swarm');
@@ -139,18 +199,21 @@
 	function handleSSEEvent(eventType: string, data: Record<string, unknown>) {
 		switch (eventType) {
 			case 'payment_confirmed': {
-				const txHash = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-				paymentsStore.setPaymentStep('confirmed');
-				paymentsStore.setCurrentTxHash(txHash);
-				paymentsStore.addTransaction({
-					id: `tx_${Date.now()}`,
-					txHash,
-					amount: '$100',
-					service: 'Brand Analysis',
-					network: 'Base Sepolia',
-					timestamp: Date.now(),
-					status: 'confirmed'
-				});
+				// Server-side payment confirmation event (backup for SSE-based flows)
+				const serverTxHash = (data.txHash as string) ?? paymentsStore.currentTxHash;
+				if (serverTxHash && !paymentsStore.currentTxHash) {
+					paymentsStore.setPaymentStep('confirmed');
+					paymentsStore.setCurrentTxHash(serverTxHash);
+					paymentsStore.addTransaction({
+						id: `tx_${Date.now()}`,
+						txHash: serverTxHash,
+						amount: '$100',
+						service: 'Brand Analysis',
+						network: 'Base Sepolia',
+						timestamp: Date.now(),
+						status: 'confirmed',
+					});
+				}
 				swarmStore.setPhase('analysis', 'Swarm activating...');
 				break;
 			}
@@ -171,7 +234,7 @@
 						status: 'completed',
 						output: `Analysis complete (${data.outputLength} chars)`,
 						sources: [],
-						durationMs: (data.durationMs as number) ?? 0
+						durationMs: (data.durationMs as number) ?? 0,
 					});
 				}
 				break;
@@ -189,10 +252,6 @@
 				break;
 			}
 		}
-	}
-
-	function delay(ms: number): Promise<void> {
-		return new Promise((resolve) => setTimeout(resolve, ms));
 	}
 </script>
 
@@ -233,6 +292,12 @@
 					<button type="button" onclick={() => chatStore.clearError()}>Dismiss</button>
 				</div>
 			{/if}
+			{#if walletStore.error}
+				<div class="error-bar">
+					<span>{walletStore.error}</span>
+					<button type="button" onclick={() => walletStore.reset()}>Dismiss</button>
+				</div>
+			{/if}
 			<div class="input-row">
 				<textarea
 					bind:this={inputRef}
@@ -242,13 +307,33 @@
 					disabled={chatStore.isStreaming}
 					onkeydown={handleKeydown}
 				></textarea>
-				<button type="submit" disabled={!chatStore.input.trim() || chatStore.isStreaming} class="send-btn" aria-label="Send message">
-					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-					</svg>
-				</button>
+				{#if walletStore.state === 'connected'}
+					<button type="submit" disabled={!chatStore.input.trim() || chatStore.isStreaming} class="send-btn" aria-label="Send message">
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+						</svg>
+					</button>
+				{:else}
+					<button type="button" class="wallet-btn" onclick={() => walletStore.connect()} disabled={walletStore.state === 'connecting'}>
+						{#if walletStore.state === 'connecting'}
+							Connecting...
+						{:else}
+							Connect Wallet
+						{/if}
+					</button>
+				{/if}
 			</div>
-			<div class="input-hint">Press Enter to send, Shift+Enter for new line</div>
+			<div class="input-hint">
+				{#if walletStore.state === 'connected'}
+					<span class="wallet-connected">
+						<span class="dot"></span>
+						{walletStore.shortAddress} on Base Sepolia
+					</span>
+					 — Press Enter to send, Shift+Enter for new line
+				{:else}
+					Connect your wallet to pay $100 USDC via x402 for premium brand analysis
+				{/if}
+			</div>
 		</form>
 	</div>
 
@@ -445,6 +530,44 @@
 	.send-btn:disabled {
 		opacity: 0.3;
 		cursor: not-allowed;
+	}
+
+	.wallet-btn {
+		padding: 0.5rem 1rem;
+		border-radius: 0.5rem;
+		background: linear-gradient(135deg, #6366f1, #4f46e5);
+		color: white;
+		border: none;
+		cursor: pointer;
+		font-size: 0.8rem;
+		font-weight: 600;
+		white-space: nowrap;
+		flex-shrink: 0;
+		transition: opacity 0.2s;
+	}
+
+	.wallet-btn:hover:not(:disabled) {
+		opacity: 0.9;
+	}
+
+	.wallet-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.wallet-connected {
+		color: #22c55e;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+	}
+
+	.wallet-connected .dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: #22c55e;
+		display: inline-block;
 	}
 
 	.input-hint {

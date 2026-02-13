@@ -24,6 +24,7 @@
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@x402/core": "^2.3.1",
 		"@x402/evm": "^2.3.1",
+		"@x402/fetch": "^2.3.0",
 		"p-map": "^7.0.4",
 		"svelte": "^5.50.3",
 		"viem": "^2.45.3",

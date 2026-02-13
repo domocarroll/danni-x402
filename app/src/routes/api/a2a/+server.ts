@@ -41,6 +41,8 @@ export const POST: RequestHandler = async ({ request }) => {
 	const { id, method, params } = reqParsed.data;
 
 	switch (method) {
+		// A2A v0.3+ PascalCase methods (also accept legacy slash-style for compatibility)
+		case 'SendMessage':
 		case 'message/send': {
 			const paramsParsed = SendMessageParamsSchema.safeParse(params);
 			if (!paramsParsed.success) {
@@ -52,9 +54,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			const task = taskManager.createTask(paramsParsed.data.message);
 			const completed = await taskManager.processTask(task);
 
-			return json(rpcSuccess(id, completed));
+			return json(rpcSuccess(id, { task: completed }));
 		}
 
+		case 'GetTask':
 		case 'tasks/get': {
 			const paramsParsed = GetTaskParamsSchema.safeParse(params);
 			if (!paramsParsed.success) {
@@ -70,9 +73,10 @@ export const POST: RequestHandler = async ({ request }) => {
 				);
 			}
 
-			return json(rpcSuccess(id, task));
+			return json(rpcSuccess(id, { task }));
 		}
 
+		case 'CancelTask':
 		case 'tasks/cancel': {
 			const paramsParsed = CancelTaskParamsSchema.safeParse(params);
 			if (!paramsParsed.success) {
@@ -83,7 +87,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			try {
 				const task = taskManager.cancelTask(paramsParsed.data.id);
-				return json(rpcSuccess(id, task));
+				return json(rpcSuccess(id, { task }));
 			} catch (err) {
 				if (err instanceof TaskNotFoundError) {
 					return json(
@@ -101,7 +105,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		default:
 			return json(
-				rpcError(id, A2A_ERROR_CODES.METHOD_NOT_FOUND, `Unknown method: ${method}`),
+				rpcError(id, A2A_ERROR_CODES.UNSUPPORTED_OPERATION, `Unknown method: ${method}`),
 			);
 	}
 };
