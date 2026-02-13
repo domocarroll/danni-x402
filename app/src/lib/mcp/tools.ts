@@ -149,6 +149,7 @@ export interface McpToolCallParams {
 export const McpToolCallParamsSchema = z.object({
 	name: z.string(),
 	arguments: z.record(z.string(), z.unknown()).optional(),
+	_meta: z.record(z.string(), z.unknown()).optional(),
 });
 
 // ─── MCP Error Codes ─────────────────────────────────────────────────────────

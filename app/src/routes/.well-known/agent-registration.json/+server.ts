@@ -1,10 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-
-const ERC8004_CONTRACTS = {
-	IDENTITY_REGISTRY: '0x8004A818BFB912233c491871b3d84c89A494BD9e',
-	REPUTATION_REGISTRY: '0x8004B663056A597Dffe9eCcC1965A193B7388713',
-};
+import { ERC8004_CONTRACTS } from '$lib/erc8004/constants.js';
 
 export const GET: RequestHandler = async () => {
 	return json({
@@ -14,10 +10,31 @@ export const GET: RequestHandler = async () => {
 		description:
 			'Autonomous brand strategist powered by swarm intelligence and x402 payments',
 		version: '1.0.0',
+		active: true,
 		provider: {
 			organization: 'Subfracture',
 			url: 'https://subfrac.cloud',
 		},
+		registrations: [
+			{
+				agentRegistry: `eip155:84532:${ERC8004_CONTRACTS.IDENTITY_REGISTRY}`,
+				agentId: null,
+			},
+		],
+		services: [
+			{
+				name: 'A2A',
+				endpoint: 'https://danni.subfrac.cloud/.well-known/agent.json',
+				version: '0.3.0',
+			},
+			{
+				name: 'MCP',
+				endpoint: 'https://danni.subfrac.cloud/api/mcp',
+				version: '2025-06-18',
+			},
+		],
+		x402Support: true,
+		supportedTrust: ['reputation'],
 		chains: [
 			{
 				chainId: 84532,

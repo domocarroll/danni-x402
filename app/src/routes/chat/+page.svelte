@@ -10,6 +10,21 @@
 	import PaymentFlow from '$lib/components/PaymentFlow.svelte';
 
 	let inputRef: HTMLTextAreaElement | undefined = $state();
+	let messagesContainer: HTMLDivElement | undefined = $state();
+	let bottomSentinel: HTMLDivElement | undefined = $state();
+
+	// Auto-scroll to bottom when messages change
+	$effect(() => {
+		// Track messages length to trigger on new messages
+		const _len = chatStore.messages.length;
+		const _streaming = chatStore.isStreaming;
+		if (bottomSentinel) {
+			// Use requestAnimationFrame to ensure DOM has updated
+			requestAnimationFrame(() => {
+				bottomSentinel?.scrollIntoView({ behavior: 'smooth' });
+			});
+		}
+	});
 
 	function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
@@ -261,7 +276,7 @@
 
 <div class="chat-page">
 	<div class="chat-main">
-		<div class="messages">
+		<div class="messages" bind:this={messagesContainer}>
 			{#if chatStore.messages.length === 0}
 				<div class="empty-state">
 					<div class="empty-icon">
@@ -278,10 +293,25 @@
 					<MessageBubble {message} />
 				{/each}
 				{#if chatStore.isStreaming && !chatStore.lastMessage?.swarmResult}
-					<div class="typing-indicator">
-						<span></span><span></span><span></span>
+					<div class="loading-skeleton">
+						<div class="skeleton-avatar">
+							<span class="danni-skeleton">D</span>
+						</div>
+						<div class="skeleton-content">
+							<div class="skeleton-meta">
+								<span class="skeleton-role">DANNI</span>
+								<span class="skeleton-badge">Analyzing</span>
+							</div>
+							<div class="skeleton-lines">
+								<div class="skeleton-line" style="width: 85%"></div>
+								<div class="skeleton-line" style="width: 70%"></div>
+								<div class="skeleton-line" style="width: 60%"></div>
+								<div class="skeleton-line short" style="width: 40%"></div>
+							</div>
+						</div>
 					</div>
 				{/if}
+				<div bind:this={bottomSentinel} class="scroll-sentinel"></div>
 			{/if}
 		</div>
 
@@ -420,26 +450,106 @@
 		letter-spacing: 0.03em;
 	}
 
-	.typing-indicator {
+	.scroll-sentinel {
+		height: 1px;
+		width: 100%;
+	}
+
+	/* Loading skeleton */
+	.loading-skeleton {
 		display: flex;
-		gap: 4px;
-		padding: 0.75rem 1rem;
+		gap: 0.75rem;
+		padding: 1rem 0;
+		animation: fadeIn 0.3s ease-out;
 	}
 
-	.typing-indicator span {
-		width: 6px;
-		height: 6px;
+	.skeleton-avatar {
+		width: 32px;
+		height: 32px;
 		border-radius: 50%;
-		background: #6366f1;
-		animation: typingBounce 1.2s ease-in-out infinite;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+		background: rgba(99, 102, 241, 0.15);
+		animation: skeletonPulse 1.5s ease-in-out infinite;
 	}
 
-	.typing-indicator span:nth-child(2) {
-		animation-delay: 0.15s;
+	.danni-skeleton {
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: #6366f1;
 	}
 
-	.typing-indicator span:nth-child(3) {
-		animation-delay: 0.3s;
+	.skeleton-content {
+		flex: 1;
+		max-width: 70%;
+	}
+
+	.skeleton-meta {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 0.5rem;
+	}
+
+	.skeleton-role {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: #888;
+		letter-spacing: 0.05em;
+	}
+
+	.skeleton-badge {
+		font-size: 0.65rem;
+		padding: 0.15rem 0.5rem;
+		border-radius: 1rem;
+		background: rgba(99, 102, 241, 0.1);
+		color: #6366f1;
+		animation: skeletonPulse 1.5s ease-in-out infinite;
+	}
+
+	.skeleton-lines {
+		background: #111;
+		padding: 1rem;
+		border-radius: 0.75rem;
+		border: 1px solid #1a1a1a;
+		display: flex;
+		flex-direction: column;
+		gap: 0.625rem;
+	}
+
+	.skeleton-line {
+		height: 12px;
+		border-radius: 6px;
+		background: linear-gradient(90deg, #1a1a1a 25%, #222 50%, #1a1a1a 75%);
+		background-size: 200% 100%;
+		animation: skeletonShimmer 1.5s ease-in-out infinite;
+	}
+
+	.skeleton-line.short {
+		height: 12px;
+	}
+
+	@keyframes skeletonShimmer {
+		0% { background-position: 200% 0; }
+		100% { background-position: -200% 0; }
+	}
+
+	@keyframes skeletonPulse {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0.5; }
+	}
+
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	.input-area {
@@ -645,17 +755,6 @@
 		color: #555;
 		text-align: center;
 		letter-spacing: 0.03em;
-	}
-
-	@keyframes typingBounce {
-		0%, 80%, 100% {
-			transform: translateY(0);
-			opacity: 0.4;
-		}
-		40% {
-			transform: translateY(-6px);
-			opacity: 1;
-		}
 	}
 
 	@media (max-width: 900px) {

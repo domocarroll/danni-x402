@@ -1,12 +1,12 @@
-# Danni
+# Danni — Autonomous Brand Strategist
 
-**Autonomous Brand Strategist powered by x402**
+> Five AI analysts. One strategic brief. $100 USDC settled on-chain.
 
----
+Danni is a swarm-intelligence brand strategist that produces agency-grade strategic briefs via the x402 payment protocol. A client pays $100 USDC on Base Sepolia; five specialist agents — Market Analyst, Competitive Intel, Cultural Resonance, Brand Architect, and Danni Synthesis — execute in parallel, purchase live market data through paywalled endpoints, and deliver a unified brief a creative director could build a campaign from.
 
-## What It Does
+Every agent activation, every payment, every insight is streamed to a glass-box UI in real-time. Clients see exactly what they're paying for.
 
-Danni is an x402-powered AI swarm that produces strategic brand briefs worth $100 USDC. Five specialist AI analysts -- Market, Competitive, Cultural, Brand Architecture, and Synthesis -- work in parallel, purchasing real market data through paywalled endpoints and producing a unified strategic brief a creative director could build a campaign from. Every step is visible in real-time through a glass-box UI, and every payment settles on-chain via the x402 protocol on Base Sepolia.
+**Built with:** SvelteKit 2 + Svelte 5 | TypeScript | Bun | x402 (`@x402/core`, `@x402/evm`, `@x402/fetch`) | viem | Base Sepolia USDC | Zod
 
 ---
 
@@ -14,285 +14,314 @@ Danni is an x402-powered AI swarm that produces strategic brand briefs worth $10
 
 ```mermaid
 flowchart TB
-    Client([Client])
-    Payment[x402 Payment Gate<br/>Base Sepolia USDC — $100]
-    Orchestrator[Swarm Orchestrator]
+    subgraph Discovery["Discovery Layer"]
+        AgentCard["A2A Agent Card<br/>/.well-known/agent.json"]
+        RegJSON["ERC-8004 Registration<br/>/.well-known/agent-registration.json"]
+    end
 
-    MA[Market Analyst]
-    CI[Competitive Intel]
-    CR[Cultural Resonance]
-    BA[Brand Architect]
-    DS[Danni Synthesis]
+    subgraph Trust["Trust Layer — ERC-8004"]
+        Identity["Identity Registry<br/>0x8004A818..."]
+        Reputation["Reputation Registry<br/>0x8004B663..."]
+    end
 
-    DataBroker[Data Broker<br/>Apify — x402 $5/call]
-    Brief([Strategic Brief])
+    subgraph Interop["Communication Layer"]
+        A2A["A2A JSON-RPC<br/>SendMessage · GetTask · CancelTask"]
+        MCP["MCP Server<br/>brand_analysis · competitive_scan · market_pulse"]
+    end
 
-    A2A[A2A Agent Card<br/>/.well-known/agent.json]
-    MCP[MCP Server<br/>brand_analysis · competitive_scan · market_pulse]
+    subgraph Payment["Payment Layer — x402"]
+        Gate["HTTP 402 Challenge<br/>EIP-3009 USDC Authorization"]
+        Facilitator["x402 Facilitator<br/>x402.org + Kobaru (SKALE)"]
+    end
 
-    Client -->|POST /api/danni/analyze| Payment
-    Payment --> Orchestrator
+    subgraph Engine["Swarm Engine"]
+        Orch["Orchestrator"]
+        MA["Market Analyst"]
+        CI["Competitive Intel"]
+        CR["Cultural Resonance"]
+        BA["Brand Architect"]
+        DS["Danni Synthesis"]
+    end
 
-    Orchestrator --> MA
-    Orchestrator --> CI
-    Orchestrator --> CR
-    Orchestrator --> BA
+    subgraph Data["Data Layer"]
+        Broker["Data Broker<br/>Apify — $5/call via x402"]
+    end
 
-    MA --> DataBroker
-    CI --> DataBroker
-    CR --> DataBroker
+    Client([Client Agent or Browser])
+    Brief([Strategic Brief + Receipt])
 
-    MA --> DS
-    CI --> DS
-    CR --> DS
-    BA --> DS
-
+    Client --> AgentCard
+    Client --> A2A
+    Client --> MCP
+    A2A --> Gate
+    MCP --> Gate
+    Gate --> Facilitator
+    Facilitator --> Orch
+    Orch --> MA & CI & CR & BA
+    MA & CI & CR --> Broker
+    MA & CI & CR & BA --> DS
     DS --> Brief
-    Brief -->|SSE Stream| Client
-
-    A2A -.->|JSON-RPC| Orchestrator
-    MCP -.->|Tool calls| Orchestrator
+    Brief --> Client
+    Identity -.-> AgentCard
+    Reputation -.-> DS
 ```
 
 ---
 
-## Key Features
+## Protocol Compliance
 
-**x402 Protocol** -- First-ever SvelteKit x402 adapter. Custom `HTTPAdapter` implementation wrapping SvelteKit's `RequestEvent` into the x402 payment middleware. All endpoints are paywalled on-chain.
+Danni implements the full agentic commerce stack. No other entry demonstrates all four layers together.
 
-**Swarm Intelligence** -- Five parallel AI analysts with domain-specific system prompts drawn from strategic frameworks (Ogilvy, Fallon/Senn, Holt). Each agent operates with its own cognitive lens; synthesis merges their outputs into a cohesive brief.
-
-**Real Data** -- Apify-backed competitive intelligence (Google Search), social listening (Twitter scraper), and market trends (Google Trends). Cache-first with hardcoded fallback for demo reliability.
-
-**Glass Box** -- Real-time SSE streaming of agent activity. The UI shows each analyst activating, thinking, and producing -- clients see exactly what they are paying for.
-
-**Agent Interop** -- A2A (Agent-to-Agent) protocol via `/.well-known/agent.json` and JSON-RPC handler, plus an MCP server exposing `brand_analysis`, `competitive_scan`, and `market_pulse` as callable tools. Both protocols delegate to the same backend.
-
-**AP2 Protocol (Track 3)** -- First TypeScript implementation of the Agentic Payment Protocol v0.2. Full mandate lifecycle: IntentMandate (client declares intent) -> CartMandate (agent prices with embedded x402 PaymentRequiredResponse) -> PaymentMandate (client submits payment proof) -> PaymentReceipt (agent confirms on-chain settlement with tx hash). x402 payment requirements are embedded inside CartMandate artifacts following the AP2 v0.2 embedded flow spec. Payment status tracked via `x402.payment.*` metadata keys in A2A task status messages.
-
-**ERC-8004 Identity (Track 1)** -- On-chain agent registration and reputation on Base Sepolia. Agent identity registered via `/.well-known/agent-registration.json` (EIP-8004 registration-v1 schema) backed by the Identity Registry contract at `0x8004A818...`. After each successful x402 payment, positive reputation feedback is submitted to the Reputation Registry via `giveFeedback()` -- creating an auditable on-chain reputation trail linking agent identity to payment history.
-
-**SKALE Dual-Chain** -- Zero-gas-fee alternative payment path via SKALE Europa Hub. Agent Card declares both Base Sepolia (primary) and SKALE Europa (alternative) payment networks, with Kobaru as the SKALE facilitator. Client agents can choose the cheapest settlement path.
-
-**Strategic Frameworks** -- Methodology grounded in three canonical texts: Ogilvy's *Confessions* (craft layer), Fallon/Senn's *Juicing the Orange* (execution layer), and Holt's *How Brands Become Icons* (vision layer). Agents synthesize top-down: Holt to Fallon to Ogilvy.
+| Protocol | Spec | Implementation | Status |
+|----------|------|----------------|--------|
+| **x402** | HTTP 402 + EIP-3009 | Custom SvelteKit adapter (`HTTPAdapter` → `RequestEvent`). Server: `@x402/core` + `@x402/evm`. Client: `@x402/fetch` with wallet signer. | Complete |
+| **A2A** | v0.3 JSON-RPC | Agent Card at `/.well-known/agent.json`. PascalCase methods (`SendMessage`, `GetTask`, `CancelTask`). Response envelope `{ task: {...} }`. Extensions: AP2 + ERC-8004. | Complete |
+| **MCP** | 2025-06-18 | `tools/list` + `tools/call` with x402 payment gating via `_meta["x402/payment"]`. Payment required returns `isError: true` with requirements. Payment response includes settlement receipt. | Complete |
+| **AP2** | v0.2 embedded flow | IntentMandate → CartMandate (embedded x402 PaymentRequiredResponse) → PaymentMandate → PaymentReceipt. Status tracking via `x402.payment.*` metadata keys. First TypeScript implementation. | Complete |
+| **ERC-8004** | Identity + Reputation | Identity Registry `0x8004A818...` on Base Sepolia. Reputation Registry `0x8004B663...`. Agent registration JSON at `/.well-known/agent-registration.json`. Feedback submitted post-payment. | Complete |
+| **SKALE** | Dual-chain | Alternative zero-gas payment path via SKALE Europa Hub (`eip155:1444673419`) with Kobaru facilitator. Declared in Agent Card `alternativeNetworks`. | Declared |
 
 ---
 
-## Tech Stack
+## AP2 Payment Flow
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | SvelteKit 2 + Svelte 5 (runes) |
-| Language | TypeScript (strict mode) |
-| Runtime | Bun |
-| Payments | x402 Protocol (`@x402/core`, `@x402/evm`) |
-| Chain | Base Sepolia (EIP-155:84532, USDC) + SKALE Europa Hub |
-| Identity | ERC-8004 (Identity Registry + Reputation Registry) |
-| Commerce | AP2 v0.2 (Agentic Payment Protocol) |
-| Validation | Zod |
-| On-chain | viem (contract interactions, agent registration) |
-| Market Data | Apify (Google Search, Twitter, Google Trends) |
-| Agent Interop | A2A Protocol + MCP Server |
-| Styling | Scoped Svelte styles, dark theme |
+```mermaid
+sequenceDiagram
+    participant C as Client Agent
+    participant A as Danni (A2A)
+    participant X as x402 Facilitator
+    participant S as Swarm Engine
+    participant R as ERC-8004 Registry
 
----
+    C->>A: SendMessage(IntentMandate: brand-analysis)
+    A->>A: buildCartMandate($100 USDC)
+    A-->>C: Task(state=input-required, contextId, CartMandate + x402 PaymentRequirements)
 
-## Hackathon Tracks
+    Note over C: Client signs EIP-3009 USDC authorization
 
-### Track 1: ERC-8004 On-Chain Agent Identity ($9,500)
-
-Danni registers as a verifiable on-chain agent via ERC-8004 on Base Sepolia.
-
-- **Registration**: `/.well-known/agent-registration.json` serves the EIP-8004 registration-v1 schema
-- **Identity Registry**: `0x8004A818BFB912233c491871b3d84c89A494BD9e` — `register(agentURI)` returns a unique `agentId`
-- **Reputation Registry**: `0x8004B663056A597Dffe9eCcC1965A193B7388713` — `giveFeedback()` called after every successful x402 payment
-- **Audit Trail**: Each payment creates an on-chain reputation entry linking `agentId` + `txHash` + feedback score
-
-```bash
-# Register agent on-chain
-WALLET_PRIVATE_KEY=0x... bun run scripts/register-agent.ts
-
-# Verify registration endpoint
-curl https://danni.subfrac.cloud/.well-known/agent-registration.json
+    C->>A: SendMessage(contextId, PaymentMandate: paymentPayload + txHash)
+    A->>A: Resume task via contextId (same task, appended history)
+    A->>X: Verify x402 payment
+    X-->>A: Payment settled
+    A->>S: executeSwarm(brief)
+    S-->>A: Strategic brief (5 agents)
+    A->>R: giveFeedback(agentId, +1, "payment")
+    A-->>C: Task(state=completed, artifacts=[brief, PaymentReceipt])
 ```
 
-### Track 3: AP2 Agentic Payment Protocol ($13,000)
+---
 
-First TypeScript implementation of AP2 v0.2 with x402 embedded flow.
+## The Full Loop
 
-**Mandate Lifecycle:**
-1. Client sends `IntentMandate` (skill + parameters) via A2A `message/send`
-2. Agent responds with `CartMandate` containing embedded x402 `PaymentRequiredResponse`
-3. Client submits `PaymentMandate` with payment proof
-4. Agent verifies, executes swarm, returns results + `PaymentReceipt` with on-chain tx hash
+```
+discover → trust → communicate → pay → deliver → rate
+   A2A     ERC-8004    A2A/MCP     x402   Swarm   ERC-8004
+```
 
-**Payment Status Tracking** via `x402.payment.*` metadata keys:
-- `x402.payment.status`: `payment-required` | `payment-submitted` | `payment-verified` | `payment-completed` | `payment-failed`
-- `x402.payment.required`: Payment requirements embedded in CartMandate artifact
-- `x402.payment.receipts`: Array of PaymentReceipt objects with tx hashes
-
-**Failure Recovery**: Expired payments and invalid signatures return proper error codes (`-32010` through `-32013`) with `payment-failed` status.
-
-### SKALE Dual-Chain
-
-Agent Card declares both Base Sepolia (primary) and SKALE Europa Hub (alternative) as payment networks. SKALE offers zero gas fees via the Kobaru facilitator at `gateway.kobaru.io`.
+1. **Discover** — Client reads `/.well-known/agent.json`, finds Danni's skills and pricing
+2. **Trust** — Client checks ERC-8004 Identity Registry, reads reputation score
+3. **Communicate** — Client calls `SendMessage` (A2A) or `tools/call` (MCP) with a brand brief
+4. **Pay** — Server returns HTTP 402; client signs EIP-3009 USDC authorization; facilitator settles
+5. **Deliver** — Five agents execute in parallel, streaming progress via SSE
+6. **Rate** — Positive reputation feedback submitted on-chain via `giveFeedback()`
 
 ---
 
-## Protocol Endpoints
+## Pricing
+
+| Skill | Price | Protocol |
+|-------|-------|----------|
+| `brand_analysis` — Full strategic brief (5 agents) | $100 USDC | x402 on Base Sepolia |
+| `competitive_scan` — Competitor landscape | $5 USDC | x402 on Base Sepolia |
+| `market_pulse` — Industry dynamics | $5 USDC | x402 on Base Sepolia |
+
+All prices are in USDC on Base Sepolia (chain `eip155:84532`). Settlement is immediate and verifiable on-chain.
+
+---
+
+## Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/.well-known/agent.json` | GET | A2A Agent Card with AP2/ERC-8004/SKALE extensions |
+| `/.well-known/agent.json` | GET | A2A Agent Card — discovery, skills, pricing, extensions |
 | `/.well-known/agent-registration.json` | GET | ERC-8004 registration-v1 schema |
-| `/api/a2a` | POST | A2A JSON-RPC (SendMessage, GetTask, CancelTask) with AP2 mandate support |
-| `/api/mcp` | POST | MCP tool server (brand_analysis, competitive_scan, market_pulse) |
-| `/api/danni/analyze` | POST | Direct swarm endpoint ($100 USDC via x402) |
-| `/api/data/competitive` | POST | Competitive intel ($5 USDC via x402) |
-| `/api/data/social` | POST | Social listening ($5 USDC via x402) |
-| `/api/data/market` | POST | Market trends ($5 USDC via x402) |
+| `/api/a2a` | POST | A2A JSON-RPC handler with AP2 mandate lifecycle |
+| `/api/mcp` | POST | MCP tool server with x402 payment gating |
+| `/api/danni/analyze` | POST | Direct swarm endpoint — $100 USDC |
+| `/api/data/competitive` | POST | Competitive intel — $5 USDC |
+| `/api/data/social` | POST | Social listening — $5 USDC |
+| `/api/data/market` | POST | Market trends — $5 USDC |
 
 ---
 
-## Quick Start
+## Getting Started
 
 ```bash
-git clone <repository-url>
-cd app
+git clone https://github.com/anthropics/x402-hackathon.git
+cd x402-hackathon/app
 bun install
-cp .env.example .env   # Add your keys — see Environment Variables below
-bun run dev             # Dev server at localhost:5173
+cp .env.example .env
 ```
 
-### Build and Verify
+Edit `.env`:
+
+```env
+WALLET_ADDRESS=0x...          # Receives USDC payments (public)
+WALLET_PRIVATE_KEY=0x...      # Signs x402 receipts (secret)
+APIFY_API_KEY=apify_api_...   # Market data from Apify
+USE_CLI=true                  # Use claude -p backend (default)
+```
+
+Run:
 
 ```bash
-bun run check    # TypeScript + svelte-check (0 errors required)
-bun run build    # Production build
-bun run preview  # Preview production build
+bun run dev          # http://localhost:5173
+bun run check        # TypeScript verification (0 errors required)
+bun run build        # Production build
+bun run test         # 85 tests — AP2 schemas, x402-flow, task manager, MCP tools
+```
+
+Register on-chain (requires Base Sepolia ETH for gas):
+
+```bash
+bun run scripts/register-agent.ts
 ```
 
 ---
 
-## Project Structure
+## Demo
 
-```
-src/
-  routes/
-    +page.svelte                            # Landing page
-    +layout.svelte                          # Global layout
-    chat/+page.svelte                       # Chat interface with SSE streaming
-    dashboard/+page.svelte                  # Payment history dashboard
-    api/
-      danni/analyze/+server.ts              # Main swarm endpoint ($100)
-      data/competitive/+server.ts           # Competitive intel ($5)
-      data/social/+server.ts                # Social listening ($5)
-      data/market/+server.ts                # Market trends ($5)
-      payments/history/+server.ts           # Transaction history
-      a2a/+server.ts                        # A2A JSON-RPC handler
-      mcp/+server.ts                        # MCP tool server
-    .well-known/agent.json/+server.ts       # A2A Agent Card
-  lib/
-    x402/                                   # SvelteKit x402 adapter + middleware
-    swarm/
-      orchestrator.ts                       # executeSwarm() — parallel agent execution
-      tracker.ts                            # SubagentTracker for event recording
-      streaming-tracker.ts                  # SSE event emission
-      agents/                               # 5 specialist agent prompt modules
-        market-analyst.ts
-        competitive-intel.ts
-        cultural-resonance.ts
-        brand-architect.ts
-        danni-synthesis.ts
-    llm/
-      provider.ts                           # LLMProvider interface
-      cli-backend.ts                        # claude -p CLI backend
-    data/
-      apify-client.ts                       # Apify actor runner
-      cache.ts                              # File-based JSON cache (1hr TTL)
-      fallback.ts                           # Hardcoded demo data
-    a2a/
-      types.ts                              # A2A protocol types
-      task-manager.ts                       # A2A task lifecycle
-    mcp/
-      tools.ts                              # MCP tool definitions
-      handlers.ts                           # MCP tool handlers
-    stores/
-      chat.svelte.ts                        # Chat state (Svelte 5 runes)
-      swarm.svelte.ts                       # Swarm activity state
-      payments.svelte.ts                    # Payment flow state
-    components/
-      MessageBubble.svelte                  # Chat message display
-      AgentCard.svelte                      # Individual agent status
-      SwarmViz.svelte                       # Swarm activity visualization
-      PaymentFlow.svelte                    # Payment step indicator
-    types/                                  # Shared TypeScript interfaces + Zod schemas
-    config/                                 # Constants, route config, pricing
-  hooks.server.ts                           # x402 payment middleware
+### 1. Connect Wallet
+Open `http://localhost:5173/chat`. Click **Connect Wallet**. MetaMask prompts for Base Sepolia.
+
+### 2. Submit a Brief
+> "Analyze the brand positioning of Notion in the productivity space"
+
+### 3. Pay
+The server returns HTTP 402. `@x402/fetch` signs an EIP-3009 USDC authorization and retries automatically. Settlement happens on-chain.
+
+### 4. Watch the Swarm
+Five agent cards light up in sequence: Market Analyst gathers data, Competitive Intel maps the landscape, Cultural Resonance reads the cultural moment, Brand Architect frames the positioning, Danni Synthesis produces the final brief.
+
+### 5. Receive the Brief
+A strategic brief suitable for a creative director. The transaction hash links to Base Sepolia block explorer. Reputation feedback is submitted to the ERC-8004 Reputation Registry.
+
+### Verify Protocol Compliance
+
+```bash
+# A2A Agent Card (discovery)
+curl http://localhost:5173/.well-known/agent.json | jq .
+
+# ERC-8004 registration
+curl http://localhost:5173/.well-known/agent-registration.json | jq .
+
+# MCP tools/list
+curl -X POST http://localhost:5173/api/mcp \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
----
+### Full AP2 Payment Flow (curl)
 
-## Environment Variables
+```bash
+# Step 1: IntentMandate → receive CartMandate + contextId
+RESPONSE=$(curl -s -X POST http://localhost:5173/api/a2a \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "jsonrpc": "2.0", "id": 1,
+    "method": "SendMessage",
+    "params": {
+      "message": {
+        "role": "user",
+        "parts": [{
+          "type": "data",
+          "mimeType": "application/json",
+          "data": {
+            "type": "ap2.mandates.IntentMandate",
+            "skillId": "brand-analysis",
+            "description": "Analyze brand positioning of Notion"
+          }
+        }]
+      }
+    }
+  }')
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `WALLET_ADDRESS` | Yes | Ethereum address that receives USDC payments. Public — safe to commit. |
-| `WALLET_PRIVATE_KEY` | Yes | Private key for the wallet above. Used by x402 to verify payment receipts. Never commit this. |
-| `APIFY_API_KEY` | Yes | Apify API token for market data actors (competitive, social, trends). |
-| `USE_CLI` | No | Set to `true` to use `claude -p` CLI backend (default). Omit or set `false` for Anthropic API. |
-| `ANTHROPIC_API_KEY` | No | Required only if `USE_CLI` is not `true`. Anthropic API key for the Agent SDK backend. |
-| `ELEVENLABS_API_KEY` | No | ElevenLabs API key for voice synthesis. Danni narrates the strategic brief. |
-| `FACILITATOR_URL` | No | x402 facilitator endpoint. Defaults to `https://x402.org/facilitator`. |
-| `NETWORK` | No | Target chain. Defaults to `eip155:84532` (Base Sepolia). |
-| `PUBLIC_BASE_URL` | No | Server base URL. Defaults to `http://localhost:5173`. |
+# Extract contextId for payment resumption
+CONTEXT_ID=$(echo "$RESPONSE" | jq -r '.result.task.contextId')
+echo "Task state: $(echo "$RESPONSE" | jq -r '.result.task.status.state')"
+echo "Context ID: $CONTEXT_ID"
+
+# Step 2: PaymentMandate with same contextId → resumes original task
+curl -s -X POST http://localhost:5173/api/a2a \
+  -H 'Content-Type: application/json' \
+  -d "{
+    \"jsonrpc\": \"2.0\", \"id\": 2,
+    \"method\": \"SendMessage\",
+    \"params\": {
+      \"contextId\": \"$CONTEXT_ID\",
+      \"message\": {
+        \"role\": \"user\",
+        \"parts\": [
+          {
+            \"type\": \"data\",
+            \"mimeType\": \"application/json\",
+            \"data\": {
+              \"type\": \"ap2.mandates.PaymentMandate\",
+              \"paymentPayload\": \"eip3009-signed-authorization\",
+              \"transactionHash\": \"0xabc123\"
+            }
+          },
+          {
+            \"type\": \"text\",
+            \"text\": \"Analyze brand positioning of Notion in the productivity space\"
+          }
+        ]
+      }
+    }
+  }" | jq '.result.task | {id, contextId, state: .status.state, artifacts: (.artifacts | length)}'
+```
 
 ---
 
 ## How It Was Built
 
-This project was built by a meta-cognitive AI swarm.
+Three Fates — Clotho, Lachesis, Atropos — orchestrated parallel AI builders through tmux sessions. Each launched an independent agent (Claude Opus 4.6) on its assigned phase. Phases 3, 4, and 5 were built simultaneously in 12 minutes of wall-clock time: 25 files, zero type errors, zero file conflicts.
 
-Three Fates -- Clotho, Lachesis, Atropos -- oversaw three parallel AI builders through tmux sessions. Each Fate launched an OpenCode Sisyphus instance (Claude Opus 4.6) and watched its assigned phase: Clotho guarded the Data Broker, Lachesis the Frontend Shell, Atropos the Agent Interop layer. A fourth system, the Loom, wove their observations into a provenance chain -- a semantic record of every decision, self-correction, and emergent pattern.
+The build process is the product. Danni is a brand strategist built by the same swarm intelligence she uses to analyze brands.
 
-**Phases 3, 4, and 5 were built simultaneously in 12 minutes of wall-clock time.** 25 files. Zero type errors. Zero file conflicts between independent builders. The agents independently chose the same design tokens without coordination -- emergent convergence from shared architectural constraints.
-
-The provenance chain is preserved in `.fates/` and included in this repository:
+Build provenance is preserved in `.fates/`:
 
 ```
 .fates/
-  loom/loom.md             # The Loom's narrative of the build
+  loom/loom.md             # Narrative of the build
   provenance/threads.md    # Decision chain with causal links
-  analysis/current.md      # Drift analysis between agents
-  prompts/                 # The exact prompts that launched each builder
+  analysis/                # Protocol gap analysis, drift detection
 ```
 
-The build process is the product. Danni is a brand strategist built by the same kind of swarm intelligence she uses to analyze brands. The architecture is fractal -- the same pattern of parallel specialist agents producing a unified synthesis operates at every level, from the codebase to the deliverable.
+---
 
-### Build Timeline
+## Hackathon Tracks
 
-| Phase | What | Duration | Files |
-|-------|------|----------|-------|
-| 1. Foundation | SvelteKit + x402 adapter + payment middleware | Session 02 | 6 |
-| 2. Swarm Engine | 5-agent orchestrator + LLM backend + prompts | Session 02 | 10 |
-| 3. Data Broker | 3 Apify endpoints + cache + fallback | 4m 17s | 7 |
-| 4. Frontend Shell | Landing + chat + dashboard + components + stores | 11m 46s | 10 |
-| 5. Agent Interop | A2A + MCP + 3 protocol endpoints | 6m 41s | 7 |
-| 6. Integration | SSE streaming + endpoint wiring + MCP/A2A backends | Session 03 | 8 |
+| Track | Prize | What We Demonstrate |
+|-------|-------|---------------------|
+| **x402 Payment Protocol** | Primary | First SvelteKit x402 adapter. Real USDC settlement. Client + server. |
+| **ERC-8004 Identity** | $9,500 | On-chain agent registration + reputation feedback loop. |
+| **AP2 Agentic Payments** | $13,000 | First TypeScript AP2 v0.2. Full mandate lifecycle inside A2A. |
+| **A2A Agent Interop** | Google | Full Agent Card, JSON-RPC handler, AP2 + ERC-8004 extensions. |
+| **MCP Tool Server** | AI Tooling | Three tools with x402 payment gating via `_meta`. |
+| **Innovation** | General | Glass-box UI. Swarm intelligence. Strategic frameworks (Ogilvy, Fallon, Holt). |
 
 ---
 
 ## The Canon
 
-Danni's strategic intelligence is grounded in three texts that form her analytical foundation:
+Danni's strategic intelligence draws from three canonical texts:
 
-**Layer 1 -- Craft** (Ogilvy, *Confessions of an Advertising Man*): Research-first methodology. Facts sell. The Big Idea test. Every claim must be substantiated.
+- **Ogilvy** (*Confessions*) — Research-first. Facts sell. The Big Idea test.
+- **Fallon/Senn** (*Juicing the Orange*) — Ruthlessly simple problem. Proprietary emotion.
+- **Holt** (*How Brands Become Icons*) — Cultural contradictions. Identity myths.
 
-**Layer 2 -- Execution** (Fallon/Senn, *Juicing the Orange*): Ruthlessly simple problem definition. Proprietary emotion. Creative solutions emerge from precise constraints.
-
-**Layer 3 -- Vision** (Holt, *How Brands Become Icons*): Cultural contradictions. Identity myths. Brands succeed by addressing the anxieties of their moment.
-
-The agents synthesize top-down: Holt (what cultural tension exists) to Fallon (what the brand can own) to Ogilvy (how to prove it). The books argue with each other productively -- consistency versus breakthrough, facts versus myths -- and that productive tension is encoded into the swarm's parallel analysis.
+Agents synthesize top-down: Holt (cultural tension) → Fallon (brand ownership) → Ogilvy (proof). The productive tension between these perspectives is encoded into the swarm's parallel execution.
 
 ---
 

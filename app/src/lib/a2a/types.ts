@@ -229,6 +229,7 @@ export const SendMessageParamsSchema = z.object({
 		historyLength: z.number().optional(),
 	}).optional(),
 	metadata: z.record(z.string(), z.unknown()).optional(),
+	contextId: z.string().optional(),
 });
 
 export const GetTaskParamsSchema = z.object({

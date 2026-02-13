@@ -57,11 +57,22 @@ export function buildCartMandate(skillId: string, payTo: string): CartMandate {
 							payTo,
 							maxTimeoutSeconds: 300,
 						},
+						{
+							scheme: 'exact',
+							network: NETWORKS.SKALE_EUROPA,
+							maxAmountRequired,
+							resource: '/api/a2a',
+							description: `${skill.description} (SKALE — zero gas)`,
+							mimeType: 'application/json',
+							payTo,
+							maxTimeoutSeconds: 300,
+						},
 					],
 				},
 			},
 		},
 		expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+		timestamp: new Date().toISOString(),
 	};
 }
 

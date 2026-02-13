@@ -16,6 +16,7 @@ import {
 	buildCartMandate,
 	buildPaymentReceipt,
 	buildPaymentMetadata,
+	isCartMandateExpired,
 } from '$lib/ap2/index.js';
 import { env } from '$env/dynamic/private';
 
@@ -84,7 +85,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				);
 			}
 
-			const { message } = paramsParsed.data;
+			const { message, contextId: requestContextId } = paramsParsed.data;
 			const mandate = extractMandate(message.parts);
 
 			if (mandate.kind === 'malformed') {
@@ -93,6 +94,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				);
 			}
 
+			// ─── IntentMandate → CartMandate (with contextId for resumption) ────
 			if (mandate.kind === 'intent') {
 				const intent = mandate.data as { skillId: string; description: string };
 				const payTo = env.WALLET_ADDRESS ?? '0x0000000000000000000000000000000000000000';
@@ -127,7 +129,7 @@ export const POST: RequestHandler = async ({ request }) => {
 						parts: [
 							{
 								type: 'text',
-								text: `Payment of ${cartMandate.contents.total} USDC required for ${intent.description}. Submit a PaymentMandate to proceed.`,
+								text: `Payment of ${cartMandate.contents.total} USDC required for ${intent.description}. Submit a PaymentMandate with contextId "${task.contextId}" to proceed.`,
 							},
 						],
 						metadata: buildPaymentMetadata('payment-required'),
@@ -141,6 +143,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				}
 			}
 
+			// ─── PaymentMandate → Resume task via contextId or create new ────
 			if (mandate.kind === 'payment') {
 				const payment = mandate.data as { paymentPayload: string; transactionHash?: string };
 
@@ -150,18 +153,54 @@ export const POST: RequestHandler = async ({ request }) => {
 					);
 				}
 
-				const task = taskManager.createTask(message);
+				// Resume existing task by contextId (AP2 spec: intent→payment on same context)
+				const existingTask = requestContextId
+					? taskManager.findTaskByContextId(requestContextId)
+					: undefined;
 
-				try {
-					const txHash = payment.transactionHash ?? `0x${crypto.randomUUID().replace(/-/g, '')}`;
+				let taskId: string;
 
-					taskManager.updateStatus(task.id, 'working', {
+				if (existingTask && existingTask.status.state === 'input-required') {
+					const cartArtifact = existingTask.artifacts.find((a) => a.name === 'cart-mandate');
+					if (cartArtifact) {
+						const cartData = cartArtifact.parts.find(
+							(p) => p.type === 'data' && (p as { data?: { expiresAt?: string } }).data?.expiresAt,
+						);
+						if (cartData && cartData.type === 'data') {
+							const expiresAt = (cartData as { data: { expiresAt?: string } }).data.expiresAt;
+							if (isCartMandateExpired(expiresAt)) {
+								return json(
+									rpcError(id, PAYMENT_ERROR_CODES.PAYMENT_EXPIRED, 'Cart mandate has expired. Submit a new IntentMandate.'),
+								);
+							}
+						}
+					}
+
+					taskManager.addMessage(existingTask.id, message);
+					taskId = existingTask.id;
+
+					taskManager.updateStatus(taskId, 'working', {
+						role: 'agent',
+						parts: [{ type: 'text', text: 'Payment accepted. Resuming analysis on existing context...' }],
+						metadata: buildPaymentMetadata('payment-verified'),
+					});
+				} else {
+					// No contextId or task not found — create fresh task
+					const newTask = taskManager.createTask(message);
+					taskId = newTask.id;
+
+					taskManager.updateStatus(taskId, 'working', {
 						role: 'agent',
 						parts: [{ type: 'text', text: 'Payment accepted. Danni is analyzing your brief...' }],
 						metadata: buildPaymentMetadata('payment-verified'),
 					});
+				}
 
-					const completed = await taskManager.processTask(task);
+				try {
+					const txHash = payment.transactionHash ?? `0x${crypto.randomUUID().replace(/-/g, '')}`;
+
+					const taskForProcessing = taskManager.getTask(taskId)!;
+					const completed = await taskManager.processTask(taskForProcessing);
 
 					const receipt = buildPaymentReceipt(txHash, 'eip155:84532', payment.paymentPayload);
 
@@ -193,7 +232,7 @@ export const POST: RequestHandler = async ({ request }) => {
 							});
 						}
 					} catch (reputationErr) {
-						console.warn('Reputation feedback failed (non-fatal):', reputationErr);
+						// Reputation feedback is non-fatal — silently continue
 					}
 
 					const finalTask = taskManager.getTask(completed.id)!;
@@ -201,7 +240,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				} catch (err) {
 					const msg = err instanceof Error ? err.message : 'Payment processing failed';
 					try {
-						taskManager.updateStatus(task.id, 'failed', {
+						taskManager.updateStatus(taskId, 'failed', {
 							role: 'agent',
 							parts: [{ type: 'text', text: `Payment failed: ${msg}` }],
 							metadata: buildPaymentMetadata('payment-failed'),
@@ -209,11 +248,12 @@ export const POST: RequestHandler = async ({ request }) => {
 					} catch {
 						// Already in terminal state
 					}
-					const failedTask = taskManager.getTask(task.id)!;
+					const failedTask = taskManager.getTask(taskId)!;
 					return json(rpcSuccess(id, { task: failedTask }));
 				}
 			}
 
+			// ─── Plain text fallback → existing swarm flow ────
 			const task = taskManager.createTask(message);
 			const completed = await taskManager.processTask(task);
 			return json(rpcSuccess(id, { task: completed }));

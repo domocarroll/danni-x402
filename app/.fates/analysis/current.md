@@ -1,52 +1,36 @@
-# Lachesis Analysis — Phase 8 Night Watch
-## Last Updated: 2026-02-13 21:00 AEST
+# Lachesis Dashboard — 2026-02-13 23:30 AEST
 
-### Stream Health
-| Stream | Builder | Status | Progress |
-|--------|---------|--------|----------|
-| 1. Visual Polish | Alpha | LAUNCHING | 0% |
-| 2. Token + Interop | Beta | LAUNCHING | 0% |
-| 3. Deploy + Demo | Gamma | LAUNCHING | 0% |
+| Metric | Value |
+|--------|-------|
+| **Drift Index** | 0.15 (LOW — hardening, not drifting) |
+| **Build** | GREEN — svelte-check 0 errors, 0 warnings |
+| **Tests** | GREEN — 85/85 passing, 3 suites (expanding) |
+| **Uncommitted** | 19 modified + 9 untracked = 28 items, +1529/-400 |
+| **Hours Left** | 18.5h (deadline 2026-02-14 17:59 AEST) |
+| **Progress** | 76% demo-ready |
+| **Velocity** | HIGH — Sisyphus cycle 2, background agent swarm active |
+| **Top Concern** | 1529 uncommitted lines — **6th consecutive cycle flagging**. COMMIT NOW. |
+| **Recommendation** | COMMIT NOW. Fund wallet (2min human). Let hardening finish. SHIP mode by 08:00. |
 
-### Build Health
-- Build: GREEN (0 errors, 0 warnings)
-- Last commit: e432968 (docs: night shift compute plan)
-- Drift Index: 0.00 (INIT)
-- Error Rate: 0%
-- Velocity: STARTING
+## Priority Matrix
 
-### Risk Register (Atropos)
-| Risk | Severity | Mitigation |
-|------|----------|------------|
-| Agents modify locked files | HIGH | Explicit guardrails in every prompt |
-| Build breaks overnight | HIGH | `bun run check` before every commit |
-| Merge conflicts between streams | MEDIUM | Separate file ownership per stream |
-| Rate limiting on LLM calls | LOW | Staggered launch already in place |
+| Pri | Track | Status | % | Blocker |
+|-----|-------|--------|---|---------|
+| P1 | AP2 mandate lifecycle | DONE | 95 | — |
+| P1 | ERC-8004 on-chain | BLOCKED | 10 | 0 ETH in wallet |
+| P1 | A2A x402 payment flow | NEAR | 85 | AP2→x402 wiring |
+| P2 | MCP transport | NEAR | 80 | Tool registration |
+| P2 | Test coverage | EXPANDING | 100→120+ | Sisyphus adding more |
+| P2 | SKALE dual-chain | WIRED | 70 | Needs facilitator test |
+| P2 | Frontend polish | PARTIAL | 60 | Visual pass needed |
+| P3 | Demo video | NOT STARTED | 0 | No live URL yet |
+| P3 | DoraHacks submission | NOT STARTED | 0 | Depends on demo |
 
-### Stream 1 File Ownership (Alpha — Visual Polish)
-- `src/routes/chat/+page.svelte` (scroll-to-bottom, loading states)
-- `src/lib/components/MessageBubble.svelte` (markdown rendering)
-- `src/routes/graph/+page.svelte` (dynamic import)
-- `src/routes/+layout.svelte` (favicon, mobile nav)
-- `src/routes/+page.svelte` (OG tags, animations)
-- `src/routes/error/+page.svelte` (NEW — 404 page)
-- `src/lib/components/PaymentFlow.svelte` (transition animations)
-- `static/favicon.svg` (NEW)
+## Agent Status
 
-### Stream 2 File Ownership (Beta — Token Transparency + Interop)
-- `src/lib/stores/swarm.svelte.ts` (token count fields)
-- `src/lib/components/SwarmViz.svelte` (token display)
-- `src/lib/components/AgentCard.svelte` (per-agent tokens)
-- `src/routes/chat/+page.svelte` (economics card updates — coordinate with Alpha)
-- `README.md` (curl examples)
-- `src/routes/.well-known/agent.json/+server.ts` (verification)
-
-### Stream 3 File Ownership (Gamma — Deploy + Demo)
-- `scripts/deploy.sh` (VPS deployment)
-- `Dockerfile` (production build)
-- `README.md` (architecture screenshots — coordinate with Beta)
-
-### Coordination Notes
-- Alpha and Beta both touch `src/routes/chat/+page.svelte` — Alpha handles scroll/loading, Beta handles economics card
-- Beta and Gamma both touch `README.md` — Beta adds curl examples, Gamma adds screenshots
-- Stagger: Alpha commits first, then Beta, then Gamma to minimize conflicts
+| Agent | State | Context | Last Action |
+|-------|-------|---------|-------------|
+| Sisyphus (OpenCode) | ACTIVE | 72% | Cycle 2 — bg agents for test coverage, ERC-8004 tests in progress |
+| Lachesis (this) | CYCLE 5 | — | Dashboard refresh |
+| Clotho | ACTIVE | — | Provenance thr_030 written |
+| Atropos | WATCHING | — | Safety monitoring |

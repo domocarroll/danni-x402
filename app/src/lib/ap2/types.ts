@@ -34,6 +34,8 @@ export const IntentMandateSchema = z.object({
 	description: z.string(),
 	skillId: z.string(),
 	parameters: z.record(z.string(), z.unknown()).optional(),
+	intentExpiry: z.string().optional(),
+	userCartConfirmationRequired: z.boolean().optional(),
 });
 export type IntentMandate = z.infer<typeof IntentMandateSchema>;
 
@@ -92,6 +94,8 @@ export const CartMandateSchema = z.object({
 	contents: CartContentsSchema,
 	paymentRequest: PaymentRequestSchema,
 	expiresAt: z.string().optional(),
+	merchantSignature: z.string().optional(),
+	timestamp: z.string().optional(),
 });
 export type CartMandate = z.infer<typeof CartMandateSchema>;
 
@@ -101,6 +105,7 @@ export const PaymentMandateSchema = z.object({
 	type: z.literal('ap2.mandates.PaymentMandate'),
 	paymentPayload: z.string(),
 	transactionHash: z.string().optional(),
+	userAuthorization: z.string().optional(),
 });
 export type PaymentMandate = z.infer<typeof PaymentMandateSchema>;
 

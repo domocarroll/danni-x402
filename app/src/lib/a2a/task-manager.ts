@@ -24,14 +24,15 @@ const VALID_TRANSITIONS: Record<TaskState, readonly TaskState[]> = {
 
 class TaskManager {
 	private tasks = new Map<string, Task>();
+	private contextIndex = new Map<string, string>();
 
-	createTask(message: Message): Task {
+	createTask(message: Message, contextId?: string): Task {
 		const id = crypto.randomUUID();
-		const contextId = crypto.randomUUID();
+		const ctx = contextId ?? crypto.randomUUID();
 
 		const task: Task = {
 			id,
-			contextId,
+			contextId: ctx,
 			status: {
 				state: 'submitted',
 				timestamp: new Date().toISOString(),
@@ -41,11 +42,18 @@ class TaskManager {
 		};
 
 		this.tasks.set(id, task);
+		this.contextIndex.set(ctx, id);
 		return task;
 	}
 
 	getTask(id: string): Task | undefined {
 		return this.tasks.get(id);
+	}
+
+	findTaskByContextId(contextId: string): Task | undefined {
+		const taskId = this.contextIndex.get(contextId);
+		if (!taskId) return undefined;
+		return this.tasks.get(taskId);
 	}
 
 	updateStatus(id: string, state: TaskState, statusMessage?: Message): Task {
@@ -131,20 +139,25 @@ class TaskManager {
 	}
 
 	async processTask(task: Task): Promise<Task> {
-		try {
-			this.updateStatus(task.id, 'working', {
-				role: 'agent',
-				parts: [{ type: 'text', text: 'Danni is analyzing your brief...' }],
-			});
-		} catch (error) {
-			if (error instanceof InvalidStateTransitionError) {
-				this.addMessage(task.id, {
+		const current = this.tasks.get(task.id);
+		if (!current) {
+			throw new TaskNotFoundError(task.id);
+		}
+
+		// Only transition to working if not already there (avoids double-transition when
+		// the A2A handler has already set working before calling processTask)
+		if (current.status.state !== 'working') {
+			try {
+				this.updateStatus(task.id, 'working', {
 					role: 'agent',
-					parts: [{ type: 'text', text: `Cannot process task: ${error.message}` }],
+					parts: [{ type: 'text', text: 'Danni is analyzing your brief...' }],
 				});
-				return this.tasks.get(task.id)!;
+			} catch (error) {
+				if (error instanceof InvalidStateTransitionError) {
+					return current;
+				}
+				throw error;
 			}
-			throw error;
 		}
 
 		const briefText = task.history
@@ -214,7 +227,7 @@ class TaskManager {
 				});
 			} catch (transitionError) {
 				// If we cannot transition to failed (e.g. already in terminal state), log it
-				console.error('Failed to transition task to failed state:', transitionError);
+				// Already in terminal state — transition silently rejected
 			}
 		}
 

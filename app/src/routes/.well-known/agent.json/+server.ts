@@ -27,6 +27,9 @@ export const GET: RequestHandler = async () => {
 					description:
 						'AP2: Agentic Payment Protocol — IntentMandate, CartMandate, PaymentMandate, PaymentReceipt lifecycle',
 					required: false,
+					params: {
+						roles: ['merchant'],
+					},
 				},
 				{
 					uri: 'https://eips.ethereum.org/EIPS/eip-8004',

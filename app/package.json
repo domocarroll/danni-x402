@@ -9,12 +9,15 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"wallet:generate": "bun run scripts/generate-wallet.ts"
+		"wallet:generate": "bun run scripts/generate-wallet.ts",
+		"test": "vitest run",
+		"test:watch": "vitest"
 	},
 	"devDependencies": {
 		"@types/bun": "latest",
 		"svelte-check": "^4.0.0",
-		"typescript": "^5.9.0"
+		"typescript": "^5.9.0",
+		"vitest": "^4.0.18"
 	},
 	"dependencies": {
 		"3d-force-graph": "^1.79.1",
@@ -25,6 +28,7 @@
 		"@x402/core": "^2.3.1",
 		"@x402/evm": "^2.3.1",
 		"@x402/fetch": "^2.3.0",
+		"marked": "^17.0.2",
 		"p-map": "^7.0.4",
 		"svelte": "^5.50.3",
 		"viem": "^2.45.3",

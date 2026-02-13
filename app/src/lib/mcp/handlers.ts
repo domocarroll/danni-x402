@@ -16,9 +16,9 @@ export async function handleToolCall(
 			case 'brand_analysis':
 				return await handleBrandAnalysis(args ?? {});
 			case 'competitive_scan':
-				return await handleCompetitiveScan(args ?? {});
+				return handleCompetitiveScan(args ?? {});
 			case 'market_pulse':
-				return await handleMarketPulse(args ?? {});
+				return handleMarketPulse(args ?? {});
 			default:
 				return {
 					content: [{ type: 'text', text: `Unknown tool: ${name}` }],
@@ -57,7 +57,7 @@ async function handleBrandAnalysis(args: Record<string, unknown>): Promise<McpTo
 	}
 }
 
-async function handleCompetitiveScan(args: Record<string, unknown>): Promise<McpToolResult> {
+function handleCompetitiveScan(args: Record<string, unknown>): McpToolResult {
 	const parsed = CompetitiveScanInputSchema.safeParse(args);
 	if (!parsed.success) {
 		return {
@@ -66,36 +66,13 @@ async function handleCompetitiveScan(args: Record<string, unknown>): Promise<Mcp
 		};
 	}
 
-	const { brand, competitors } = parsed.data;
-
-	try {
-		const response = await fetch(`http://localhost:5173/api/data/competitive`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ brand, competitors }),
-		});
-
-		if (!response.ok) {
-			throw new Error(`Competitive API returned ${response.status}: ${response.statusText}`);
-		}
-
-		const data = await response.json();
-		return {
-			content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-		};
-	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Competitive scan failed';
-		console.error('MCP competitive_scan error:', message);
-
-		// Fallback if fetch fails (e.g. during startup)
-		const fallback = getFallbackCompetitive(brand);
-		return {
-			content: [{ type: 'text', text: JSON.stringify(fallback, null, 2) }],
-		};
-	}
+	const data = getFallbackCompetitive(parsed.data.brand);
+	return {
+		content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+	};
 }
 
-async function handleMarketPulse(args: Record<string, unknown>): Promise<McpToolResult> {
+function handleMarketPulse(args: Record<string, unknown>): McpToolResult {
 	const parsed = MarketPulseInputSchema.safeParse(args);
 	if (!parsed.success) {
 		return {
@@ -104,31 +81,8 @@ async function handleMarketPulse(args: Record<string, unknown>): Promise<McpTool
 		};
 	}
 
-	const { industry } = parsed.data;
-
-	try {
-		const response = await fetch(`http://localhost:5173/api/data/market`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ industry }),
-		});
-
-		if (!response.ok) {
-			throw new Error(`Market API returned ${response.status}: ${response.statusText}`);
-		}
-
-		const data = await response.json();
-		return {
-			content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-		};
-	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Market pulse failed';
-		console.error('MCP market_pulse error:', message);
-
-		// Fallback if fetch fails
-		const fallback = getFallbackMarket(industry);
-		return {
-			content: [{ type: 'text', text: JSON.stringify(fallback, null, 2) }],
-		};
-	}
+	const data = getFallbackMarket(parsed.data.industry);
+	return {
+		content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+	};
 }

@@ -20,11 +20,11 @@ Build an x402-powered autonomous brand strategist in ~26 hours. Two parallel tra
 
 - [x] **Phase 1: Foundation** - SvelteKit project + x402 adapter + project skeleton (BLOCKS PARALLEL)
 - [x] **Phase 2: Swarm Engine** - 5-agent orchestration with `claude -p` backend (CLAUDE CODE)
-- [ ] **Phase 3: Data Broker** - Apify-backed x402-paywalled data endpoints (OPENCODE SISYPHUS)
-- [ ] **Phase 4: Frontend Shell** - Glass-box UI with chat, payment viz, swarm activity (OPENCODE SISYPHUS)
-- [ ] **Phase 5: Agent Interop** - A2A Agent Card + MCP server (OPENCODE SISYPHUS)
-- [ ] **Phase 6: Integration** - Wire everything together, end-to-end flow (CLAUDE CODE)
-- [ ] **Phase 7: Polish & Deploy** - Error handling, personality, deployment (OPENCODE OVERNIGHT)
+- [x] **Phase 3: Data Broker** - Apify-backed x402-paywalled data endpoints (OPENCODE SISYPHUS)
+- [x] **Phase 4: Frontend Shell** - Glass-box UI with chat, payment viz, swarm activity (OPENCODE SISYPHUS)
+- [x] **Phase 5: Agent Interop** - A2A Agent Card + MCP server (OPENCODE SISYPHUS)
+- [x] **Phase 6: Integration** - Wire everything together, end-to-end flow (CLAUDE CODE)
+- [x] **Phase 7: Polish & Deploy** - Error handling, personality, deployment, README (CLAUDE CODE + AGENTS)
 - [ ] **Phase 8: Demo & Submit** - Video production + DoraHacks submission
 
 ## Phase Details
@@ -170,9 +170,9 @@ Phase 1 (Foundation) --- BLOCKS EVERYTHING
 |-------|-------|----------------|--------|-----------|
 | 1. Foundation | Claude Code | 1/1 | Complete | 2026-02-13 |
 | 2. Swarm Engine | Claude Code | 3/3 | Complete | 2026-02-13 |
-| 3. Data Broker | OpenCode | 0/TBD | Not started | - |
-| 4. Frontend Shell | OpenCode | 0/TBD | Not started | - |
-| 5. Agent Interop | OpenCode | 0/TBD | Not started | - |
-| 6. Integration | Claude Code | 0/TBD | Not started | - |
-| 7. Polish & Deploy | OpenCode + CC | 0/TBD | Not started | - |
-| 8. Demo & Submit | Dom + CC | 0/TBD | Not started | - |
+| 3. Data Broker | OpenCode | 1/1 | Complete | 2026-02-13 |
+| 4. Frontend Shell | OpenCode | 1/1 | Complete | 2026-02-13 |
+| 5. Agent Interop | OpenCode | 1/1 | Complete | 2026-02-13 |
+| 6. Integration | Claude Code | 1/1 | Complete | 2026-02-13 |
+| 7. Polish & Deploy | Claude Code + Agents | 1/1 | Complete | 2026-02-13 |
+| 8. Demo & Submit | Dom + CC | 0/TBD | In progress | - |
