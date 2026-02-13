@@ -239,3 +239,12 @@ export const GetTaskParamsSchema = z.object({
 export const CancelTaskParamsSchema = z.object({
 	id: z.string(),
 });
+
+// ─── x402 Payment Extension ─────────────────────────────────────────────────
+
+export const PAYMENT_ERROR_CODES = {
+	PAYMENT_REQUIRED: -32010,
+	PAYMENT_INVALID: -32011,
+	PAYMENT_EXPIRED: -32012,
+	PAYMENT_FAILED: -32013,
+} as const;

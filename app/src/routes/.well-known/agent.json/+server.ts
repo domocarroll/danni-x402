@@ -1,11 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { PRICING, NETWORKS, USDC, FACILITATORS } from '$lib/config/index.js';
+import { PRICING, NETWORKS, USDC, FACILITATORS, SKALE } from '$lib/config/index.js';
 
 export const GET: RequestHandler = async () => {
 	return json({
 		name: 'Danni',
-		description: 'Autonomous brand strategist powered by swarm intelligence. Five parallel AI analysts produce market positioning, competitive intelligence, cultural resonance, and brand architecture synthesized into actionable strategy.',
+		description:
+			'Autonomous brand strategist powered by swarm intelligence. Five parallel AI analysts produce market positioning, competitive intelligence, cultural resonance, and brand architecture synthesized into actionable strategy.',
 		version: '1.0.0',
 		provider: {
 			organization: 'Subfracture',
@@ -16,9 +17,22 @@ export const GET: RequestHandler = async () => {
 			pushNotifications: false,
 			extensions: [
 				{
-					uri: 'https://github.com/google-a2a/a2a-x402/v0.1',
-					description: 'Supports payments using the x402 protocol for on-chain USDC settlement on Base Sepolia.',
+					uri: 'https://github.com/google-agentic-commerce/a2a-x402/blob/main/spec/v0.2',
+					description:
+						'AP2 v0.2: Agentic Payment Protocol with x402 embedded flow for on-chain USDC settlement',
 					required: true,
+				},
+				{
+					uri: 'https://github.com/google-agentic-commerce/ap2/tree/v0.1',
+					description:
+						'AP2: Agentic Payment Protocol — IntentMandate, CartMandate, PaymentMandate, PaymentReceipt lifecycle',
+					required: false,
+				},
+				{
+					uri: 'https://eips.ethereum.org/EIPS/eip-8004',
+					description:
+						'ERC-8004 on-chain agent identity and reputation on Base Sepolia',
+					required: false,
 				},
 			],
 		},
@@ -28,8 +42,9 @@ export const GET: RequestHandler = async () => {
 			{
 				id: 'brand-analysis',
 				name: 'Strategic Brand Analysis',
-				description: 'Premium brand strategy from 5 parallel AI analysts — market positioning, competitive intelligence, cultural resonance, and brand architecture synthesized into actionable strategy.',
-				tags: ['brand', 'strategy', 'analysis', 'market', 'competitive', 'x402'],
+				description:
+					'Premium brand strategy from 5 parallel AI analysts — market positioning, competitive intelligence, cultural resonance, and brand architecture synthesized into actionable strategy.',
+				tags: ['brand', 'strategy', 'analysis', 'market', 'competitive', 'x402', 'ap2'],
 				examples: [
 					'Analyze the brand positioning of Notion in the productivity space',
 					'What strategic opportunities exist for a new DTC skincare brand targeting Gen Z?',
@@ -40,26 +55,35 @@ export const GET: RequestHandler = async () => {
 			{
 				id: 'competitive-scan',
 				name: 'Competitive Landscape Scan',
-				description: 'Quick competitive intelligence scan — identifies competitor positioning, strengths, weaknesses, and market share for a given brand.',
+				description:
+					'Quick competitive intelligence scan — identifies competitor positioning, strengths, weaknesses, and market share for a given brand.',
 				tags: ['competitive', 'intelligence', 'scan', 'market-share', 'x402'],
-				examples: [
-					'Scan competitors for Figma in the design tools market',
-				],
+				examples: ['Scan competitors for Figma in the design tools market'],
 				inputModes: ['application/json'],
 				outputModes: ['application/json'],
 			},
 			{
 				id: 'market-pulse',
 				name: 'Market Pulse',
-				description: 'Industry market dynamics overview — market size, growth rate, emerging trends, and key players for a given industry segment.',
+				description:
+					'Industry market dynamics overview — market size, growth rate, emerging trends, and key players for a given industry segment.',
 				tags: ['market', 'trends', 'industry', 'dynamics', 'x402'],
-				examples: [
-					'What are the market dynamics for AI-powered SaaS in 2026?',
-				],
+				examples: ['What are the market dynamics for AI-powered SaaS in 2026?'],
 				inputModes: ['application/json'],
 				outputModes: ['application/json'],
 			},
 		],
+		identity: {
+			standard: 'ERC-8004',
+			registrationUrl: 'https://danni.subfrac.cloud/.well-known/agent-registration.json',
+			chains: [
+				{
+					network: NETWORKS.BASE_SEPOLIA,
+					identityRegistry: '0x8004A818BFB912233c491871b3d84c89A494BD9e',
+					reputationRegistry: '0x8004B663056A597Dffe9eCcC1965A193B7388713',
+				},
+			],
+		},
 		securitySchemes: {
 			x402: {
 				type: 'x402',
@@ -79,6 +103,14 @@ export const GET: RequestHandler = async () => {
 				'competitive-scan': PRICING.DATA_ENDPOINT,
 				'market-pulse': PRICING.DATA_ENDPOINT,
 			},
+			alternativeNetworks: [
+				{
+					network: SKALE.EUROPA_HUB.network,
+					asset: SKALE.EUROPA_HUB.usdc,
+					facilitator: FACILITATORS.KOBARU,
+					description: 'SKALE Europa Hub — zero gas fees',
+				},
+			],
 		},
 		supportedInterfaces: [
 			{

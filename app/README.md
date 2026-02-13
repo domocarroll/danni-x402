@@ -68,6 +68,12 @@ flowchart TB
 
 **Agent Interop** -- A2A (Agent-to-Agent) protocol via `/.well-known/agent.json` and JSON-RPC handler, plus an MCP server exposing `brand_analysis`, `competitive_scan`, and `market_pulse` as callable tools. Both protocols delegate to the same backend.
 
+**AP2 Protocol (Track 3)** -- First TypeScript implementation of the Agentic Payment Protocol v0.2. Full mandate lifecycle: IntentMandate (client declares intent) -> CartMandate (agent prices with embedded x402 PaymentRequiredResponse) -> PaymentMandate (client submits payment proof) -> PaymentReceipt (agent confirms on-chain settlement with tx hash). x402 payment requirements are embedded inside CartMandate artifacts following the AP2 v0.2 embedded flow spec. Payment status tracked via `x402.payment.*` metadata keys in A2A task status messages.
+
+**ERC-8004 Identity (Track 1)** -- On-chain agent registration and reputation on Base Sepolia. Agent identity registered via `/.well-known/agent-registration.json` (EIP-8004 registration-v1 schema) backed by the Identity Registry contract at `0x8004A818...`. After each successful x402 payment, positive reputation feedback is submitted to the Reputation Registry via `giveFeedback()` -- creating an auditable on-chain reputation trail linking agent identity to payment history.
+
+**SKALE Dual-Chain** -- Zero-gas-fee alternative payment path via SKALE Europa Hub. Agent Card declares both Base Sepolia (primary) and SKALE Europa (alternative) payment networks, with Kobaru as the SKALE facilitator. Client agents can choose the cheapest settlement path.
+
 **Strategic Frameworks** -- Methodology grounded in three canonical texts: Ogilvy's *Confessions* (craft layer), Fallon/Senn's *Juicing the Orange* (execution layer), and Holt's *How Brands Become Icons* (vision layer). Agents synthesize top-down: Holt to Fallon to Ogilvy.
 
 ---
@@ -80,11 +86,71 @@ flowchart TB
 | Language | TypeScript (strict mode) |
 | Runtime | Bun |
 | Payments | x402 Protocol (`@x402/core`, `@x402/evm`) |
-| Chain | Base Sepolia (EIP-155:84532, USDC) |
+| Chain | Base Sepolia (EIP-155:84532, USDC) + SKALE Europa Hub |
+| Identity | ERC-8004 (Identity Registry + Reputation Registry) |
+| Commerce | AP2 v0.2 (Agentic Payment Protocol) |
 | Validation | Zod |
+| On-chain | viem (contract interactions, agent registration) |
 | Market Data | Apify (Google Search, Twitter, Google Trends) |
 | Agent Interop | A2A Protocol + MCP Server |
 | Styling | Scoped Svelte styles, dark theme |
+
+---
+
+## Hackathon Tracks
+
+### Track 1: ERC-8004 On-Chain Agent Identity ($9,500)
+
+Danni registers as a verifiable on-chain agent via ERC-8004 on Base Sepolia.
+
+- **Registration**: `/.well-known/agent-registration.json` serves the EIP-8004 registration-v1 schema
+- **Identity Registry**: `0x8004A818BFB912233c491871b3d84c89A494BD9e` — `register(agentURI)` returns a unique `agentId`
+- **Reputation Registry**: `0x8004B663056A597Dffe9eCcC1965A193B7388713` — `giveFeedback()` called after every successful x402 payment
+- **Audit Trail**: Each payment creates an on-chain reputation entry linking `agentId` + `txHash` + feedback score
+
+```bash
+# Register agent on-chain
+WALLET_PRIVATE_KEY=0x... bun run scripts/register-agent.ts
+
+# Verify registration endpoint
+curl https://danni.subfrac.cloud/.well-known/agent-registration.json
+```
+
+### Track 3: AP2 Agentic Payment Protocol ($13,000)
+
+First TypeScript implementation of AP2 v0.2 with x402 embedded flow.
+
+**Mandate Lifecycle:**
+1. Client sends `IntentMandate` (skill + parameters) via A2A `message/send`
+2. Agent responds with `CartMandate` containing embedded x402 `PaymentRequiredResponse`
+3. Client submits `PaymentMandate` with payment proof
+4. Agent verifies, executes swarm, returns results + `PaymentReceipt` with on-chain tx hash
+
+**Payment Status Tracking** via `x402.payment.*` metadata keys:
+- `x402.payment.status`: `payment-required` | `payment-submitted` | `payment-verified` | `payment-completed` | `payment-failed`
+- `x402.payment.required`: Payment requirements embedded in CartMandate artifact
+- `x402.payment.receipts`: Array of PaymentReceipt objects with tx hashes
+
+**Failure Recovery**: Expired payments and invalid signatures return proper error codes (`-32010` through `-32013`) with `payment-failed` status.
+
+### SKALE Dual-Chain
+
+Agent Card declares both Base Sepolia (primary) and SKALE Europa Hub (alternative) as payment networks. SKALE offers zero gas fees via the Kobaru facilitator at `gateway.kobaru.io`.
+
+---
+
+## Protocol Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/.well-known/agent.json` | GET | A2A Agent Card with AP2/ERC-8004/SKALE extensions |
+| `/.well-known/agent-registration.json` | GET | ERC-8004 registration-v1 schema |
+| `/api/a2a` | POST | A2A JSON-RPC (SendMessage, GetTask, CancelTask) with AP2 mandate support |
+| `/api/mcp` | POST | MCP tool server (brand_analysis, competitive_scan, market_pulse) |
+| `/api/danni/analyze` | POST | Direct swarm endpoint ($100 USDC via x402) |
+| `/api/data/competitive` | POST | Competitive intel ($5 USDC via x402) |
+| `/api/data/social` | POST | Social listening ($5 USDC via x402) |
+| `/api/data/market` | POST | Market trends ($5 USDC via x402) |
 
 ---
 

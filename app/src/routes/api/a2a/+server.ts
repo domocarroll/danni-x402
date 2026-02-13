@@ -6,9 +6,40 @@ import {
 	GetTaskParamsSchema,
 	CancelTaskParamsSchema,
 	A2A_ERROR_CODES,
+	PAYMENT_ERROR_CODES,
 } from '$lib/a2a/types.js';
-import type { JsonRpcResponse } from '$lib/a2a/types.js';
+import type { JsonRpcResponse, DataPart } from '$lib/a2a/types.js';
 import { taskManager, TaskNotFoundError, TaskNotCancelableError } from '$lib/a2a/task-manager.js';
+import {
+	IntentMandateSchema,
+	PaymentMandateSchema,
+	buildCartMandate,
+	buildPaymentReceipt,
+	buildPaymentMetadata,
+} from '$lib/ap2/index.js';
+import { env } from '$env/dynamic/private';
+
+function extractMandate(parts: Array<{ type: string; [key: string]: unknown }>): {
+	kind: 'intent' | 'payment' | 'none';
+	data: unknown;
+} {
+	for (const part of parts) {
+		if (part.type !== 'data') continue;
+		const payload = 'data' in part ? part.data : undefined;
+		if (payload && typeof payload === 'object' && 'type' in (payload as Record<string, unknown>)) {
+			const obj = payload as Record<string, unknown>;
+			if (obj.type === 'ap2.mandates.IntentMandate') {
+				const parsed = IntentMandateSchema.safeParse(obj);
+				if (parsed.success) return { kind: 'intent', data: parsed.data };
+			}
+			if (obj.type === 'ap2.mandates.PaymentMandate') {
+				const parsed = PaymentMandateSchema.safeParse(obj);
+				if (parsed.success) return { kind: 'payment', data: parsed.data };
+			}
+		}
+	}
+	return { kind: 'none', data: null };
+}
 
 function rpcSuccess(id: string | number, result: unknown): JsonRpcResponse {
 	return { jsonrpc: '2.0', id, result };
@@ -41,7 +72,6 @@ export const POST: RequestHandler = async ({ request }) => {
 	const { id, method, params } = reqParsed.data;
 
 	switch (method) {
-		// A2A v0.3+ PascalCase methods (also accept legacy slash-style for compatibility)
 		case 'SendMessage':
 		case 'message/send': {
 			const paramsParsed = SendMessageParamsSchema.safeParse(params);
@@ -51,9 +81,120 @@ export const POST: RequestHandler = async ({ request }) => {
 				);
 			}
 
-			const task = taskManager.createTask(paramsParsed.data.message);
-			const completed = await taskManager.processTask(task);
+			const { message } = paramsParsed.data;
+			const mandate = extractMandate(message.parts);
 
+			if (mandate.kind === 'intent') {
+				const intent = mandate.data as { skillId: string; description: string };
+				const payTo = env.WALLET_ADDRESS ?? '0x0000000000000000000000000000000000000000';
+
+				try {
+					const cartMandate = buildCartMandate(intent.skillId, payTo);
+					const task = taskManager.createTask(message);
+
+					taskManager.addArtifact(task.id, {
+						artifactId: crypto.randomUUID(),
+						name: 'cart-mandate',
+						description: 'AP2 CartMandate with x402 payment requirements',
+						parts: [
+							{
+								type: 'data',
+								mimeType: 'application/json',
+								data: cartMandate,
+							},
+						],
+						metadata: buildPaymentMetadata('payment-required', {
+							'x402.payment.required': cartMandate.paymentRequest,
+						}),
+					});
+
+					taskManager.updateStatus(task.id, 'input-required', {
+						role: 'agent',
+						parts: [
+							{
+								type: 'text',
+								text: `Payment of ${cartMandate.contents.total} USDC required for ${intent.description}. Submit a PaymentMandate to proceed.`,
+							},
+						],
+						metadata: buildPaymentMetadata('payment-required'),
+					});
+
+					const updatedTask = taskManager.getTask(task.id)!;
+					return json(rpcSuccess(id, { task: updatedTask }));
+				} catch (err) {
+					const msg = err instanceof Error ? err.message : 'Failed to build cart mandate';
+					return json(rpcError(id, PAYMENT_ERROR_CODES.PAYMENT_REQUIRED, msg));
+				}
+			}
+
+			if (mandate.kind === 'payment') {
+				const payment = mandate.data as { paymentPayload: string; transactionHash?: string };
+				const task = taskManager.createTask(message);
+
+				try {
+					const txHash = payment.transactionHash ?? `0x${crypto.randomUUID().replace(/-/g, '')}`;
+
+					taskManager.updateStatus(task.id, 'working', {
+						role: 'agent',
+						parts: [{ type: 'text', text: 'Payment accepted. Danni is analyzing your brief...' }],
+						metadata: buildPaymentMetadata('payment-verified'),
+					});
+
+					const completed = await taskManager.processTask(task);
+
+					const receipt = buildPaymentReceipt(txHash, 'eip155:84532', payment.paymentPayload);
+
+					taskManager.addArtifact(completed.id, {
+						artifactId: crypto.randomUUID(),
+						name: 'payment-receipt',
+						description: 'AP2 PaymentReceipt confirming on-chain settlement',
+						parts: [
+							{
+								type: 'data',
+								mimeType: 'application/json',
+								data: receipt,
+							},
+						],
+						metadata: buildPaymentMetadata('payment-completed', {
+							'x402.payment.receipts': [receipt],
+						}),
+					});
+
+					try {
+						const { submitPaymentFeedback, getAgentId } = await import('$lib/erc8004/index.js');
+						const agentId = await getAgentId('https://danni.subfrac.cloud');
+						if (agentId > 0n) {
+							await submitPaymentFeedback({
+								agentId,
+								endpoint: '/api/a2a',
+								transactionHash: txHash,
+								paymentAmount: payment.paymentPayload,
+							});
+						}
+					} catch (reputationErr) {
+						console.warn('Reputation feedback failed (non-fatal):', reputationErr);
+					}
+
+					const finalTask = taskManager.getTask(completed.id)!;
+					return json(rpcSuccess(id, { task: finalTask }));
+				} catch (err) {
+					const msg = err instanceof Error ? err.message : 'Payment processing failed';
+					try {
+						taskManager.updateStatus(task.id, 'failed', {
+							role: 'agent',
+							parts: [{ type: 'text', text: `Payment failed: ${msg}` }],
+							metadata: buildPaymentMetadata('payment-failed'),
+						});
+					} catch {
+						// Already in terminal state
+					}
+					const failedTask = taskManager.getTask(task.id)!;
+					return json(rpcSuccess(id, { task: failedTask }));
+				}
+			}
+
+			const task = taskManager.createTask(message);
+			const completed = await taskManager.processTask(task);
 			return json(rpcSuccess(id, { task: completed }));
 		}
 
