@@ -23,6 +23,7 @@ export {
 export {
 	buildCartMandate,
 	validatePaymentMandate,
+	isCartMandateExpired,
 	buildPaymentReceipt,
 	buildPaymentMetadata,
 } from './x402-flow.js';

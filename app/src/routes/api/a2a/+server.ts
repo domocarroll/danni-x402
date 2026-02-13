@@ -8,7 +8,7 @@ import {
 	A2A_ERROR_CODES,
 	PAYMENT_ERROR_CODES,
 } from '$lib/a2a/types.js';
-import type { JsonRpcResponse, DataPart } from '$lib/a2a/types.js';
+import type { JsonRpcResponse } from '$lib/a2a/types.js';
 import { taskManager, TaskNotFoundError, TaskNotCancelableError } from '$lib/a2a/task-manager.js';
 import {
 	IntentMandateSchema,
@@ -20,8 +20,9 @@ import {
 import { env } from '$env/dynamic/private';
 
 function extractMandate(parts: Array<{ type: string; [key: string]: unknown }>): {
-	kind: 'intent' | 'payment' | 'none';
+	kind: 'intent' | 'payment' | 'malformed' | 'none';
 	data: unknown;
+	error?: string;
 } {
 	for (const part of parts) {
 		if (part.type !== 'data') continue;
@@ -31,10 +32,12 @@ function extractMandate(parts: Array<{ type: string; [key: string]: unknown }>):
 			if (obj.type === 'ap2.mandates.IntentMandate') {
 				const parsed = IntentMandateSchema.safeParse(obj);
 				if (parsed.success) return { kind: 'intent', data: parsed.data };
+				return { kind: 'malformed', data: null, error: `Invalid IntentMandate: ${parsed.error.message}` };
 			}
 			if (obj.type === 'ap2.mandates.PaymentMandate') {
 				const parsed = PaymentMandateSchema.safeParse(obj);
 				if (parsed.success) return { kind: 'payment', data: parsed.data };
+				return { kind: 'malformed', data: null, error: `Invalid PaymentMandate: ${parsed.error.message}` };
 			}
 		}
 	}
@@ -84,6 +87,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			const { message } = paramsParsed.data;
 			const mandate = extractMandate(message.parts);
 
+			if (mandate.kind === 'malformed') {
+				return json(
+					rpcError(id, PAYMENT_ERROR_CODES.PAYMENT_INVALID, mandate.error ?? 'Malformed AP2 mandate'),
+				);
+			}
+
 			if (mandate.kind === 'intent') {
 				const intent = mandate.data as { skillId: string; description: string };
 				const payTo = env.WALLET_ADDRESS ?? '0x0000000000000000000000000000000000000000';
@@ -91,6 +100,11 @@ export const POST: RequestHandler = async ({ request }) => {
 				try {
 					const cartMandate = buildCartMandate(intent.skillId, payTo);
 					const task = taskManager.createTask(message);
+
+					taskManager.updateStatus(task.id, 'working', {
+						role: 'agent',
+						parts: [{ type: 'text', text: 'Processing intent and building payment requirements...' }],
+					});
 
 					taskManager.addArtifact(task.id, {
 						artifactId: crypto.randomUUID(),
@@ -129,6 +143,13 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			if (mandate.kind === 'payment') {
 				const payment = mandate.data as { paymentPayload: string; transactionHash?: string };
+
+				if (!payment.paymentPayload.trim()) {
+					return json(
+						rpcError(id, PAYMENT_ERROR_CODES.PAYMENT_INVALID, 'PaymentMandate paymentPayload cannot be empty'),
+					);
+				}
+
 				const task = taskManager.createTask(message);
 
 				try {

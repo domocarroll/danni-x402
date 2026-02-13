@@ -68,7 +68,16 @@ export function buildCartMandate(skillId: string, payTo: string): CartMandate {
 // ─── Validate Payment Mandate ───────────────────────────────────────────────
 
 export function validatePaymentMandate(data: unknown): PaymentMandate {
-	return PaymentMandateSchema.parse(data);
+	const mandate = PaymentMandateSchema.parse(data);
+	if (!mandate.paymentPayload.trim()) {
+		throw new Error('PaymentMandate paymentPayload cannot be empty');
+	}
+	return mandate;
+}
+
+export function isCartMandateExpired(expiresAt: string | undefined): boolean {
+	if (!expiresAt) return false;
+	return new Date(expiresAt).getTime() < Date.now();
 }
 
 // ─── Build Payment Receipt ──────────────────────────────────────────────────
