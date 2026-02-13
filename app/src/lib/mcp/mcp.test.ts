@@ -8,7 +8,7 @@ import {
 	CompetitiveScanInputSchema,
 	MarketPulseInputSchema,
 } from './tools.js';
-import { handleToolCall } from './handlers.js';
+import { handleToolCall, isRetryable, formatToolError } from './handlers.js';
 
 describe('MCP Tool Definitions', () => {
 	it('defines exactly 3 tools', () => {
@@ -224,5 +224,66 @@ describe('MCP Handler — handleToolCall', () => {
 	it('handles undefined args gracefully', async () => {
 		const result = await handleToolCall('competitive_scan', undefined);
 		expect(result.isError).toBe(true);
+	});
+});
+
+describe('isRetryable', () => {
+	it.each([
+		['timeout', true],
+		['ECONNREFUSED', true],
+		['ECONNRESET', true],
+		['rate limit exceeded', true],
+		['HTTP 429 Too Many Requests', true],
+		['503 Service Unavailable', true],
+		['502 Bad Gateway', true],
+	])('classifies "%s" as retryable=%s', (msg, expected) => {
+		expect(isRetryable(new Error(msg))).toBe(expected);
+	});
+
+	it.each([
+		['Invalid input: brief is required', false],
+		['Unknown tool: foo', false],
+		['Swarm execution failed', false],
+		['Permission denied', false],
+	])('classifies "%s" as retryable=%s', (msg, expected) => {
+		expect(isRetryable(new Error(msg))).toBe(expected);
+	});
+
+	it('returns false for non-Error values', () => {
+		expect(isRetryable('string error')).toBe(false);
+		expect(isRetryable(null)).toBe(false);
+		expect(isRetryable(undefined)).toBe(false);
+		expect(isRetryable(42)).toBe(false);
+	});
+});
+
+describe('formatToolError', () => {
+	it('includes tool name and error message', () => {
+		const result = formatToolError('brand_analysis', new Error('test error'));
+		const parsed = JSON.parse(result.content[0].text);
+		expect(parsed.tool).toBe('brand_analysis');
+		expect(parsed.error).toBe('test error');
+		expect(result.isError).toBe(true);
+	});
+
+	it('includes retryAfterMs for retryable errors', () => {
+		const result = formatToolError('brand_analysis', new Error('timeout'));
+		const parsed = JSON.parse(result.content[0].text);
+		expect(parsed.retryable).toBe(true);
+		expect(parsed.retryAfterMs).toBe(2000);
+	});
+
+	it('omits retryAfterMs for permanent errors', () => {
+		const result = formatToolError('brand_analysis', new Error('Invalid input'));
+		const parsed = JSON.parse(result.content[0].text);
+		expect(parsed.retryable).toBe(false);
+		expect(parsed.retryAfterMs).toBeUndefined();
+	});
+
+	it('handles non-Error values', () => {
+		const result = formatToolError('test_tool', 'string error');
+		const parsed = JSON.parse(result.content[0].text);
+		expect(parsed.error).toBe('Tool execution failed unexpectedly');
+		expect(parsed.retryable).toBe(false);
 	});
 });

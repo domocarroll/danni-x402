@@ -7,7 +7,7 @@ import type { McpToolResult } from '$lib/mcp/tools.js';
 import { executeSwarm } from '$lib/swarm/orchestrator.js';
 import { getFallbackCompetitive, getFallbackMarket } from '$lib/data/index.js';
 
-function isRetryable(error: unknown): boolean {
+export function isRetryable(error: unknown): boolean {
 	if (error instanceof Error) {
 		const msg = error.message.toLowerCase();
 		return (
@@ -23,7 +23,7 @@ function isRetryable(error: unknown): boolean {
 	return false;
 }
 
-function formatToolError(name: string, error: unknown): McpToolResult {
+export function formatToolError(name: string, error: unknown): McpToolResult {
 	const message = error instanceof Error ? error.message : 'Tool execution failed unexpectedly';
 	const retryable = isRetryable(error);
 	return {

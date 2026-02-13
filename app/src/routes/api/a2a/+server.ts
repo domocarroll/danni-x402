@@ -236,8 +236,15 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			// ─── Plain text fallback → existing swarm flow ────
 			const task = taskManager.createTask(message);
-			const completed = await taskManager.processTask(task);
-			return json(rpcSuccess(id, { task: completed }));
+			try {
+				const completed = await taskManager.processTask(task);
+				return json(rpcSuccess(id, { task: completed }));
+			} catch (err) {
+				const msg = err instanceof Error ? err.message : 'Processing failed';
+				console.warn(`[a2a] Plain text processTask failed for ${task.id}: ${msg}`);
+				const failedTask = taskManager.getTask(task.id) ?? task;
+				return json(rpcSuccess(id, { task: failedTask }));
+			}
 		}
 
 		case 'GetTask':
