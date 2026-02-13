@@ -1,8 +1,14 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { z } from 'zod';
 import type { SocialData } from '$lib/types';
 import { runActorSync, ACTORS, getCached, setCache, getFallbackSocial } from '$lib/data';
 import type { ApifyDatasetItem } from '$lib/data';
+
+const SocialRequestSchema = z.object({
+	brand: z.string().min(1, 'Brand must be a non-empty string').max(200),
+	platforms: z.array(z.string().min(1)).max(10).optional().default([])
+});
 
 function cacheKey(brand: string, platforms: string[]): string {
 	return `social_${brand}_${platforms.sort().join('_')}`;
@@ -55,35 +61,59 @@ function parseApifyToSocial(brand: string, items: ApifyDatasetItem[]): SocialDat
 }
 
 export const POST: RequestHandler = async ({ request }) => {
-	const body = await request.json();
-	const brand = body.brand as string;
-	const platforms = (body.platforms as string[]) ?? [];
-
-	if (!brand) {
-		return json({ error: 'Missing "brand" in request body' }, { status: 400 });
+	let body: unknown;
+	try {
+		body = await request.json();
+	} catch {
+		return json({ error: 'Invalid JSON body' }, { status: 400 });
 	}
 
-	const key = cacheKey(brand, platforms);
-
-	const cached = await getCached<SocialData>(key);
-	if (cached) return json(cached);
-
-	const items = await runActorSync({
-		actorId: ACTORS.TWITTER_SCRAPER,
-		input: {
-			searchTerms: [brand],
-			maxTweets: 50,
-			sort: 'Latest'
-		},
-		timeoutSecs: 45
-	});
-
-	if (items && items.length > 0) {
-		const data = parseApifyToSocial(brand, items);
-		await setCache(key, data);
-		return json(data);
+	const parsed = SocialRequestSchema.safeParse(body);
+	if (!parsed.success) {
+		return json({ error: parsed.error.issues[0].message }, { status: 400 });
 	}
 
-	const fallback = getFallbackSocial(brand);
-	return json(fallback);
+	const { brand, platforms } = parsed.data;
+
+	try {
+		const key = cacheKey(brand, platforms);
+
+		const cached = await getCached<SocialData>(key);
+		if (cached) {
+			return json(cached, {
+				headers: { 'X-Request-Timeout': '45' }
+			});
+		}
+
+		const items = await runActorSync({
+			actorId: ACTORS.TWITTER_SCRAPER,
+			input: {
+				searchTerms: [brand],
+				maxTweets: 50,
+				sort: 'Latest'
+			},
+			timeoutSecs: 45
+		});
+
+		if (items && items.length > 0) {
+			const data = parseApifyToSocial(brand, items);
+			await setCache(key, data);
+			return json(data, {
+				headers: { 'X-Request-Timeout': '45' }
+			});
+		}
+
+		const fallback = getFallbackSocial(brand);
+		return json(fallback, {
+			headers: { 'X-Request-Timeout': '45', 'X-Data-Source': 'fallback' }
+		});
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Social data fetch failed';
+		console.error('Social endpoint error:', message);
+
+		const fallback = getFallbackSocial(brand);
+		return json(fallback, {
+			headers: { 'X-Data-Source': 'fallback-error' }
+		});
+	}
 };

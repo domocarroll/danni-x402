@@ -210,8 +210,9 @@
 							<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
 						</svg>
 					</div>
-					<h2>Brief Danni</h2>
-					<p>Describe your brand, product, or strategic challenge. Five AI analysts will produce a comprehensive strategic brief.</p>
+					<h2>What intrigues me most...</h2>
+					<p>Tell me about your brand. The market you're navigating. The audience you're trying to reach. I'll activate five specialist analysts and deliver a strategic brief a creative director could build a campaign from.</p>
+					<p class="powered-by">Powered by x402 • Base Sepolia</p>
 				</div>
 			{:else}
 				{#each chatStore.messages as message (message.id)}
@@ -254,6 +255,27 @@
 	<aside class="sidebar">
 		<PaymentFlow />
 		<SwarmViz />
+		<div class="economics-card">
+			<h3>Economics</h3>
+			<div class="economics-line">
+				<span>Analysis cost</span>
+				<span class="value">$100 USDC</span>
+			</div>
+			<div class="economics-line">
+				<span>Data sources</span>
+				<span class="value">$15 USDC</span>
+			</div>
+			<div class="economics-line detail">
+				<span>3 × $5</span>
+			</div>
+			<div class="economics-line total">
+				<span>Total</span>
+				<span class="value">$115 USDC</span>
+			</div>
+			<div class="economics-network">
+				Network: Base Sepolia
+			</div>
+		</div>
 	</aside>
 </div>
 
@@ -302,8 +324,15 @@
 	.empty-state p {
 		font-size: 0.9rem;
 		color: #666;
-		max-width: 400px;
+		max-width: 500px;
 		line-height: 1.6;
+	}
+
+	.powered-by {
+		font-size: 0.75rem !important;
+		color: #444 !important;
+		margin-top: 0.5rem;
+		letter-spacing: 0.03em;
 	}
 
 	.typing-indicator {
@@ -430,6 +459,69 @@
 		gap: 1rem;
 		padding: 1.25rem;
 		overflow-y: auto;
+	}
+
+	.economics-card {
+		background: rgba(255, 255, 255, 0.02);
+		border: 1px solid #1a1a1a;
+		border-radius: 0.75rem;
+		padding: 1.25rem;
+	}
+
+	.economics-card h3 {
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: #666;
+		margin-bottom: 1rem;
+	}
+
+	.economics-line {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.5rem 0;
+		font-size: 0.875rem;
+	}
+
+	.economics-line span {
+		color: #888;
+	}
+
+	.economics-line .value {
+		font-weight: 600;
+		color: #fafafa;
+	}
+
+	.economics-line.detail {
+		padding: 0 0 0.5rem 1rem;
+		font-size: 0.75rem;
+	}
+
+	.economics-line.total {
+		border-top: 1px solid #1a1a1a;
+		margin-top: 0.25rem;
+		padding-top: 0.75rem;
+		font-weight: 600;
+	}
+
+	.economics-line.total span {
+		color: #fafafa;
+	}
+
+	.economics-line.total .value {
+		color: #6366f1;
+	}
+
+	.economics-network {
+		margin-top: 0.75rem;
+		padding-top: 0.75rem;
+		border-top: 1px solid #1a1a1a;
+		font-size: 0.7rem;
+		color: #555;
+		text-align: center;
+		letter-spacing: 0.03em;
 	}
 
 	@keyframes typingBounce {

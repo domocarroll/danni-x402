@@ -7,6 +7,21 @@ import type {
 import { TERMINAL_STATES } from '$lib/a2a/types.js';
 import { executeSwarm } from '$lib/swarm/orchestrator.js';
 
+/**
+ * Valid state transitions for A2A tasks.
+ * Each key is the current state, values are allowed next states.
+ */
+const VALID_TRANSITIONS: Record<TaskState, readonly TaskState[]> = {
+	'submitted': ['working', 'canceled', 'rejected'],
+	'working': ['completed', 'failed', 'canceled', 'input-required'],
+	'input-required': ['working', 'canceled'],
+	'auth-required': ['working', 'canceled', 'rejected'],
+	'completed': [],
+	'failed': [],
+	'canceled': [],
+	'rejected': [],
+} as const;
+
 class TaskManager {
 	private tasks = new Map<string, Task>();
 
@@ -39,13 +54,24 @@ class TaskManager {
 			throw new TaskNotFoundError(id);
 		}
 
-		task.status = {
-			state,
-			message: statusMessage,
-			timestamp: new Date().toISOString(),
+		const currentState = task.status.state;
+		const allowedTransitions = VALID_TRANSITIONS[currentState];
+
+		if (!allowedTransitions.includes(state)) {
+			throw new InvalidStateTransitionError(id, currentState, state);
+		}
+
+		const updatedTask: Task = {
+			...task,
+			status: {
+				state,
+				message: statusMessage,
+				timestamp: new Date().toISOString(),
+			},
 		};
 
-		return task;
+		this.tasks.set(id, updatedTask);
+		return updatedTask;
 	}
 
 	addArtifact(id: string, artifact: Artifact): Task {
@@ -54,8 +80,17 @@ class TaskManager {
 			throw new TaskNotFoundError(id);
 		}
 
-		task.artifacts.push(artifact);
-		return task;
+		if (TERMINAL_STATES.includes(task.status.state) && task.status.state !== 'completed') {
+			throw new TaskMutationError(id, task.status.state, 'add artifact');
+		}
+
+		const updatedTask: Task = {
+			...task,
+			artifacts: [...task.artifacts, artifact],
+		};
+
+		this.tasks.set(id, updatedTask);
+		return updatedTask;
 	}
 
 	addMessage(id: string, message: Message): Task {
@@ -64,8 +99,13 @@ class TaskManager {
 			throw new TaskNotFoundError(id);
 		}
 
-		task.history.push(message);
-		return task;
+		const updatedTask: Task = {
+			...task,
+			history: [...task.history, message],
+		};
+
+		this.tasks.set(id, updatedTask);
+		return updatedTask;
 	}
 
 	cancelTask(id: string): Task {
@@ -78,19 +118,34 @@ class TaskManager {
 			throw new TaskNotCancelableError(id, task.status.state);
 		}
 
-		task.status = {
-			state: 'canceled',
-			timestamp: new Date().toISOString(),
+		const updatedTask: Task = {
+			...task,
+			status: {
+				state: 'canceled',
+				timestamp: new Date().toISOString(),
+			},
 		};
 
-		return task;
+		this.tasks.set(id, updatedTask);
+		return updatedTask;
 	}
 
 	async processTask(task: Task): Promise<Task> {
-		this.updateStatus(task.id, 'working', {
-			role: 'agent',
-			parts: [{ type: 'text', text: 'Danni is analyzing your brief...' }],
-		});
+		try {
+			this.updateStatus(task.id, 'working', {
+				role: 'agent',
+				parts: [{ type: 'text', text: 'Danni is analyzing your brief...' }],
+			});
+		} catch (error) {
+			if (error instanceof InvalidStateTransitionError) {
+				this.addMessage(task.id, {
+					role: 'agent',
+					parts: [{ type: 'text', text: `Cannot process task: ${error.message}` }],
+				});
+				return this.tasks.get(task.id)!;
+			}
+			throw error;
+		}
 
 		const briefText = task.history
 			.filter((m) => m.role === 'user')
@@ -98,6 +153,20 @@ class TaskManager {
 			.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
 			.map((p) => p.text)
 			.join('\n');
+
+		if (!briefText.trim()) {
+			this.addMessage(task.id, {
+				role: 'agent',
+				parts: [{ type: 'text', text: 'No text content found in user messages.' }],
+			});
+
+			this.updateStatus(task.id, 'failed', {
+				role: 'agent',
+				parts: [{ type: 'text', text: 'Task failed: empty brief' }],
+			});
+
+			return this.tasks.get(task.id)!;
+		}
 
 		try {
 			const swarmResult = await executeSwarm({ brief: briefText });
@@ -138,10 +207,15 @@ class TaskManager {
 				parts: [{ type: 'text', text: `Analysis failed: ${message}` }],
 			});
 
-			this.updateStatus(task.id, 'failed', {
-				role: 'agent',
-				parts: [{ type: 'text', text: `Task failed: ${message}` }],
-			});
+			try {
+				this.updateStatus(task.id, 'failed', {
+					role: 'agent',
+					parts: [{ type: 'text', text: `Task failed: ${message}` }],
+				});
+			} catch (transitionError) {
+				// If we cannot transition to failed (e.g. already in terminal state), log it
+				console.error('Failed to transition task to failed state:', transitionError);
+			}
 		}
 
 		return this.tasks.get(task.id)!;
@@ -162,6 +236,28 @@ export class TaskNotCancelableError extends Error {
 	) {
 		super(`Task ${taskId} is in terminal state: ${currentState}`);
 		this.name = 'TaskNotCancelableError';
+	}
+}
+
+export class InvalidStateTransitionError extends Error {
+	constructor(
+		public readonly taskId: string,
+		public readonly fromState: TaskState,
+		public readonly toState: TaskState,
+	) {
+		super(`Task ${taskId}: invalid transition from '${fromState}' to '${toState}'`);
+		this.name = 'InvalidStateTransitionError';
+	}
+}
+
+export class TaskMutationError extends Error {
+	constructor(
+		public readonly taskId: string,
+		public readonly currentState: TaskState,
+		public readonly operation: string,
+	) {
+		super(`Task ${taskId}: cannot ${operation} in terminal state '${currentState}'`);
+		this.name = 'TaskMutationError';
 	}
 }
 

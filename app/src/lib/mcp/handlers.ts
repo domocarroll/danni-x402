@@ -11,18 +11,26 @@ export async function handleToolCall(
 	name: string,
 	args: Record<string, unknown> | undefined,
 ): Promise<McpToolResult> {
-	switch (name) {
-		case 'brand_analysis':
-			return handleBrandAnalysis(args ?? {});
-		case 'competitive_scan':
-			return handleCompetitiveScan(args ?? {});
-		case 'market_pulse':
-			return handleMarketPulse(args ?? {});
-		default:
-			return {
-				content: [{ type: 'text', text: `Unknown tool: ${name}` }],
-				isError: true,
-			};
+	try {
+		switch (name) {
+			case 'brand_analysis':
+				return await handleBrandAnalysis(args ?? {});
+			case 'competitive_scan':
+				return await handleCompetitiveScan(args ?? {});
+			case 'market_pulse':
+				return await handleMarketPulse(args ?? {});
+			default:
+				return {
+					content: [{ type: 'text', text: `Unknown tool: ${name}` }],
+					isError: true,
+				};
+		}
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Tool execution failed unexpectedly';
+		return {
+			content: [{ type: 'text', text: `Internal error in ${name}: ${message}` }],
+			isError: true,
+		};
 	}
 }
 
@@ -66,11 +74,19 @@ async function handleCompetitiveScan(args: Record<string, unknown>): Promise<Mcp
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ brand, competitors }),
 		});
+
+		if (!response.ok) {
+			throw new Error(`Competitive API returned ${response.status}: ${response.statusText}`);
+		}
+
 		const data = await response.json();
 		return {
 			content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
 		};
-	} catch {
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Competitive scan failed';
+		console.error('MCP competitive_scan error:', message);
+
 		// Fallback if fetch fails (e.g. during startup)
 		const fallback = getFallbackCompetitive(brand);
 		return {
@@ -96,11 +112,19 @@ async function handleMarketPulse(args: Record<string, unknown>): Promise<McpTool
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ industry }),
 		});
+
+		if (!response.ok) {
+			throw new Error(`Market API returned ${response.status}: ${response.statusText}`);
+		}
+
 		const data = await response.json();
 		return {
 			content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
 		};
-	} catch {
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Market pulse failed';
+		console.error('MCP market_pulse error:', message);
+
 		// Fallback if fetch fails
 		const fallback = getFallbackMarket(industry);
 		return {

@@ -23,6 +23,7 @@ type: index
 - [[SvelteKit x402 Adapter]] - Our custom framework integration
 - [[Data Broker]] - Apify-powered real data acquisition via x402
 - [[LLM Provider Abstraction]] - Claude CLI vs API switching
+- [[Discovery Flow]] - Full pipeline: find → price → pay → discover → execute → deliver
 - [[Pricing Model]] - $100 premium strategic consulting
 - [[Strategic Frameworks]] - Seth Godin + Untools rails for structured thinking
 - [[Value-Based Pricing Thesis]] - Intent → value pricing, the death of seat-based SaaS

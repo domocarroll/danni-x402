@@ -8,10 +8,14 @@
 <div class="app">
 	<nav>
 		<div class="nav-inner">
-			<div class="nav-links">
-				<a href="/" class:active={page.url.pathname === '/'}>Home</a>
-				<a href="/chat" class:active={page.url.pathname === '/chat'}>Chat</a>
-				<a href="/dashboard" class:active={page.url.pathname === '/dashboard'}>Dashboard</a>
+			<div class="nav-left">
+				<a href="/" class="nav-brand">Danni</a>
+				<div class="nav-links">
+					<a href="/" class:active={page.url.pathname === '/'}>Home</a>
+					<a href="/chat" class:active={page.url.pathname === '/chat'}>Chat</a>
+					<a href="/dashboard" class:active={page.url.pathname === '/dashboard'}>Dashboard</a>
+					<a href="/graph" class:active={page.url.pathname === '/graph'}>Graph</a>
+				</div>
 			</div>
 			<div class="wallet-status">
 				<span class="dot"></span>
@@ -68,6 +72,26 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: 0 1.5rem;
+	}
+
+	.nav-left {
+		display: flex;
+		align-items: center;
+		gap: 2.5rem;
+	}
+
+	.nav-brand {
+		font-size: 0.875rem;
+		font-weight: 200;
+		letter-spacing: 0.15em;
+		text-transform: uppercase;
+		color: #fafafa;
+		text-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+		transition: opacity 0.2s;
+	}
+
+	.nav-brand:hover {
+		opacity: 0.8;
 	}
 
 	.nav-links {

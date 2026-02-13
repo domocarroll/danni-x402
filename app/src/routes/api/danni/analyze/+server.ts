@@ -6,11 +6,54 @@ import { StreamingTracker } from '$lib/swarm/streaming-tracker.js';
 import type { SSEEvent } from '$lib/swarm/streaming-tracker.js';
 import { recordTransaction } from '$lib/payments/transaction-store.js';
 
+const SWARM_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
 const AnalyzeInputSchema = z.object({
-	brief: z.string().min(1, 'Brief is required'),
+	brief: z.string().min(1, 'Brief is required').max(10000, 'Brief must be under 10,000 characters'),
 	brand: z.string().optional(),
 	industry: z.string().optional()
 });
+
+class SwarmTimeoutError extends Error {
+	constructor(timeoutMs: number) {
+		super(`Swarm execution timed out after ${Math.round(timeoutMs / 1000)}s`);
+		this.name = 'SwarmTimeoutError';
+	}
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+	return new Promise<T>((resolve, reject) => {
+		const timer = setTimeout(() => reject(new SwarmTimeoutError(timeoutMs)), timeoutMs);
+		promise
+			.then((result) => {
+				clearTimeout(timer);
+				resolve(result);
+			})
+			.catch((error) => {
+				clearTimeout(timer);
+				reject(error);
+			});
+	});
+}
+
+function classifyError(error: unknown): { message: string; status: number } {
+	if (error instanceof SwarmTimeoutError) {
+		return { message: error.message, status: 504 };
+	}
+	if (error instanceof Error) {
+		if (error.message.includes('rate limit') || error.message.includes('429')) {
+			return { message: 'AI service rate limited — please retry in a moment', status: 429 };
+		}
+		if (error.message.includes('ANTHROPIC_API_KEY') || error.message.includes('authentication')) {
+			return { message: 'AI service configuration error — contact support', status: 503 };
+		}
+		if (error.message.includes('network') || error.message.includes('ECONNREFUSED')) {
+			return { message: 'Upstream service unavailable — please retry', status: 502 };
+		}
+		return { message: error.message, status: 500 };
+	}
+	return { message: 'Swarm execution failed', status: 500 };
+}
 
 function formatSSE(event: string, data: unknown): string {
 	return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -42,7 +85,10 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (!wantsSSE) {
 		// Non-streaming: run swarm and return JSON directly
 		try {
-			const result = await executeSwarm({ brief, brand, industry });
+			const result = await withTimeout(
+				executeSwarm({ brief, brand, industry }),
+				SWARM_TIMEOUT_MS
+			);
 
 			recordTransaction({
 				id: `tx_${Date.now()}`,
@@ -57,8 +103,8 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			return json(result);
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Swarm execution failed';
-			return json({ error: message }, { status: 500 });
+			const { message, status } = classifyError(error);
+			return json({ error: message }, { status });
 		}
 	}
 
@@ -78,7 +124,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			// Signal payment confirmation (x402 middleware already verified)
 			tracker.emitPaymentConfirmed();
 
-			executeSwarm({ brief, brand, industry }, tracker)
+			withTimeout(executeSwarm({ brief, brand, industry }, tracker), SWARM_TIMEOUT_MS)
 				.then((result) => {
 					// Record the transaction
 					recordTransaction({
@@ -97,7 +143,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					controller.close();
 				})
 				.catch((error) => {
-					const message = error instanceof Error ? error.message : 'Swarm failed';
+					const { message } = classifyError(error);
 					enqueue('error', { message });
 					controller.close();
 				});

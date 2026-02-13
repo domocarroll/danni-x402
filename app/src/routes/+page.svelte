@@ -13,8 +13,50 @@
 		<p class="tagline">
 			Five parallel AI analysts. Real market data. One unified strategic brief.
 		</p>
-		<p class="price">$100 USDC per analysis</p>
-		<a href="/chat" class="cta">Start a Brief</a>
+	</section>
+
+	<section class="pricing">
+		<h2>Choose Your Depth</h2>
+		<div class="pricing-grid">
+			<div class="pricing-card">
+				<h3 class="tier-name">Pulse</h3>
+				<div class="tier-price">
+					<span class="amount">$100</span>
+					<span class="currency">USDC</span>
+				</div>
+				<p class="tier-description">Standard analysis. Five parallel analysts. Real market data. ~2 min.</p>
+				<a href="/chat" class="tier-cta">Start Analysis</a>
+			</div>
+
+			<div class="pricing-card featured">
+				<div class="popular-badge">Most Popular</div>
+				<h3 class="tier-name">Deep Dive</h3>
+				<div class="tier-price">
+					<span class="amount">$1,000</span>
+					<span class="currency">USDC</span>
+				</div>
+				<p class="tier-description">Extended analysis. Recursive passes. 10x data sources. ~15 min.</p>
+				<a href="/chat" class="tier-cta">Start Analysis</a>
+			</div>
+
+			<div class="pricing-card">
+				<div class="statement-badge">Statement Piece</div>
+				<h3 class="tier-name">Masterwork</h3>
+				<div class="tier-price">
+					<span class="amount">$50,000</span>
+					<span class="currency">USDC</span>
+				</div>
+				<p class="tier-description">Fractal recursive swarm. Evolutionary generations. Full brand platform. ~2 hours.</p>
+				<a href="/chat" class="tier-cta">Start Analysis</a>
+			</div>
+		</div>
+	</section>
+
+	<section class="danni-quote">
+		<blockquote>
+			"I've noticed something fascinating about brands that endure — they don't just sell products, they resolve cultural contradictions."
+		</blockquote>
+		<cite>— Danni</cite>
 	</section>
 
 	<section class="features">
@@ -121,30 +163,165 @@
 		line-height: 1.6;
 		color: #ccc;
 		max-width: 500px;
-		margin: 0 auto 1rem;
+		margin: 0 auto;
 	}
 
-	.price {
+	.pricing {
+		padding: 3rem 0 4rem;
+		animation: fadeUp 0.8s ease-out 0.15s both;
+	}
+
+	.pricing h2 {
+		text-align: center;
 		font-size: 1.5rem;
-		color: #6366f1;
-		font-weight: 600;
-		margin: 2rem 0;
+		font-weight: 300;
+		letter-spacing: 0.05em;
+		margin-bottom: 2.5rem;
+		color: #ccc;
 	}
 
-	.cta {
-		display: inline-block;
-		padding: 0.875rem 2.5rem;
+	.pricing-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 1.25rem;
+		max-width: 960px;
+		margin: 0 auto;
+	}
+
+	.pricing-card {
+		position: relative;
+		background: rgba(255, 255, 255, 0.03);
+		border: 1px solid #1a1a1a;
+		border-radius: 0.875rem;
+		padding: 2rem 1.75rem;
+		display: flex;
+		flex-direction: column;
+		transition: border-color 0.3s, background 0.3s, transform 0.2s;
+	}
+
+	.pricing-card:hover {
+		border-color: #2a2a2a;
+		background: rgba(255, 255, 255, 0.05);
+		transform: translateY(-2px);
+	}
+
+	.pricing-card.featured {
+		border-color: #6366f1;
+		background: rgba(99, 102, 241, 0.05);
+	}
+
+	.pricing-card.featured:hover {
+		border-color: #6366f1;
+		background: rgba(99, 102, 241, 0.08);
+	}
+
+	.popular-badge,
+	.statement-badge {
+		position: absolute;
+		top: -10px;
+		left: 50%;
+		transform: translateX(-50%);
+		padding: 0.25rem 0.75rem;
+		border-radius: 1rem;
+		font-size: 0.65rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.popular-badge {
 		background: #6366f1;
 		color: white;
-		border-radius: 0.5rem;
-		font-size: 1rem;
-		font-weight: 500;
-		transition: background 0.2s, transform 0.2s;
 	}
 
-	.cta:hover {
+	.statement-badge {
+		background: rgba(255, 255, 255, 0.1);
+		border: 1px solid #333;
+		color: #ccc;
+	}
+
+	.tier-name {
+		font-size: 1.2rem;
+		font-weight: 500;
+		margin-bottom: 1rem;
+		letter-spacing: 0.03em;
+	}
+
+	.tier-price {
+		margin-bottom: 1.5rem;
+	}
+
+	.tier-price .amount {
+		font-size: 2.25rem;
+		font-weight: 600;
+		color: #fafafa;
+	}
+
+	.tier-price .currency {
+		font-size: 0.875rem;
+		color: #888;
+		margin-left: 0.25rem;
+	}
+
+	.tier-description {
+		font-size: 0.875rem;
+		line-height: 1.6;
+		color: #888;
+		margin-bottom: 2rem;
+		flex: 1;
+	}
+
+	.tier-cta {
+		display: block;
+		text-align: center;
+		padding: 0.75rem;
+		background: rgba(255, 255, 255, 0.05);
+		border: 1px solid #2a2a2a;
+		border-radius: 0.5rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+		transition: background 0.2s, border-color 0.2s;
+	}
+
+	.tier-cta:hover {
+		background: rgba(255, 255, 255, 0.08);
+		border-color: #3a3a3a;
+	}
+
+	.pricing-card.featured .tier-cta {
+		background: #6366f1;
+		border-color: #6366f1;
+		color: white;
+	}
+
+	.pricing-card.featured .tier-cta:hover {
 		background: #4f46e5;
-		transform: translateY(-1px);
+		border-color: #4f46e5;
+	}
+
+	.danni-quote {
+		text-align: center;
+		padding: 3rem 0 4rem;
+		animation: fadeUp 0.8s ease-out 0.3s both;
+	}
+
+	.danni-quote blockquote {
+		font-size: 1.25rem;
+		font-style: italic;
+		line-height: 1.7;
+		color: #ccc;
+		max-width: 700px;
+		margin: 0 auto 1rem;
+		padding-left: 2rem;
+		border-left: 3px solid #6366f1;
+		text-align: left;
+	}
+
+	.danni-quote cite {
+		font-size: 0.875rem;
+		font-style: normal;
+		color: #666;
+		letter-spacing: 0.05em;
 	}
 
 	.features {
@@ -152,7 +329,7 @@
 		grid-template-columns: repeat(3, 1fr);
 		gap: 1.5rem;
 		padding: 3rem 0 5rem;
-		animation: fadeUp 0.8s ease-out 0.2s both;
+		animation: fadeUp 0.8s ease-out 0.45s both;
 	}
 
 	.feature-card {
@@ -186,7 +363,7 @@
 
 	.steps {
 		padding: 3rem 0 5rem;
-		animation: fadeUp 0.8s ease-out 0.4s both;
+		animation: fadeUp 0.8s ease-out 0.6s both;
 	}
 
 	.steps h2 {
@@ -247,7 +424,7 @@
 		text-align: center;
 		padding: 4rem 0 6rem;
 		border-top: 1px solid #1a1a1a;
-		animation: fadeUp 0.8s ease-out 0.6s both;
+		animation: fadeUp 0.8s ease-out 0.75s both;
 	}
 
 	.footer-cta h2 {
@@ -274,6 +451,10 @@
 	}
 
 	@media (max-width: 768px) {
+		.pricing-grid {
+			grid-template-columns: 1fr;
+		}
+
 		.features {
 			grid-template-columns: 1fr;
 		}
@@ -289,6 +470,11 @@
 
 		.wordmark {
 			font-size: 3rem;
+		}
+
+		.danni-quote blockquote {
+			padding-left: 1.5rem;
+			font-size: 1.1rem;
 		}
 	}
 </style>
