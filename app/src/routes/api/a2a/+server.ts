@@ -199,10 +199,17 @@ export const POST: RequestHandler = async ({ request }) => {
 				try {
 					const txHash = payment.transactionHash ?? `0x${crypto.randomUUID().replace(/-/g, '')}`;
 
+					// Extract cart amount from existing task artifact for receipt accuracy
+					const existingForAmount = taskManager.getTask(taskId);
+					const cartArtifactForAmount = existingForAmount?.artifacts.find((a) => a.name === 'cart-mandate');
+					const cartAmount = cartArtifactForAmount
+						? String((cartArtifactForAmount.parts.find((p) => p.type === 'data') as { data?: { paymentRequest?: { amount?: string } } } | undefined)?.data?.paymentRequest?.amount ?? payment.paymentPayload)
+						: payment.paymentPayload;
+
 					const taskForProcessing = taskManager.getTask(taskId)!;
 					const completed = await taskManager.processTask(taskForProcessing);
 
-					const receipt = buildPaymentReceipt(txHash, 'eip155:84532', payment.paymentPayload);
+					const receipt = buildPaymentReceipt(txHash, 'eip155:84532', cartAmount);
 
 					taskManager.addArtifact(completed.id, {
 						artifactId: crypto.randomUUID(),
@@ -231,23 +238,29 @@ export const POST: RequestHandler = async ({ request }) => {
 								paymentAmount: payment.paymentPayload,
 							});
 						}
-					} catch (reputationErr) {
-						// Reputation feedback is non-fatal — silently continue
-					}
+				} catch (reputationErr) {
+					// Reputation feedback is non-fatal — log for debugging but don't block response
+					console.warn(
+						`[a2a] ERC-8004 reputation feedback failed (non-fatal): ${reputationErr instanceof Error ? reputationErr.message : 'unknown error'}`,
+					);
+				}
 
 					const finalTask = taskManager.getTask(completed.id)!;
 					return json(rpcSuccess(id, { task: finalTask }));
 				} catch (err) {
 					const msg = err instanceof Error ? err.message : 'Payment processing failed';
-					try {
-						taskManager.updateStatus(taskId, 'failed', {
-							role: 'agent',
-							parts: [{ type: 'text', text: `Payment failed: ${msg}` }],
-							metadata: buildPaymentMetadata('payment-failed'),
-						});
-					} catch {
-						// Already in terminal state
-					}
+				try {
+					taskManager.updateStatus(taskId, 'failed', {
+						role: 'agent',
+						parts: [{ type: 'text', text: `Payment failed: ${msg}` }],
+						metadata: buildPaymentMetadata('payment-failed'),
+					});
+				} catch (transitionErr) {
+					// Log state transition failure — task may already be in terminal state
+					console.warn(
+						`[a2a] Failed to transition task ${taskId} to 'failed': ${transitionErr instanceof Error ? transitionErr.message : 'unknown error'}. Original error: ${msg}`,
+					);
+				}
 					const failedTask = taskManager.getTask(taskId)!;
 					return json(rpcSuccess(id, { task: failedTask }));
 				}
