@@ -64,3 +64,21 @@ ${input.brand || 'Not specified'}
 ## Industry
 ${input.industry || 'Not specified'}`;
 }
+
+/**
+ * Extract source citations from structured agent output
+ * Matches lines starting with [N] followed by text (citation format mandated by prompts)
+ * @param output - Agent output text
+ * @returns Array of citation strings
+ */
+export function extractSources(output: string): string[] {
+	const citationPattern = /^\[(\d+)\]\s+(.+)$/gm;
+	const sources: string[] = [];
+	let match: RegExpExecArray | null;
+
+	while ((match = citationPattern.exec(output)) !== null) {
+		sources.push(match[2].trim());
+	}
+
+	return sources;
+}
