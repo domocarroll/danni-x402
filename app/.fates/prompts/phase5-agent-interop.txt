@@ -1,0 +1,24 @@
+Build Phase 5: Agent Interop. Make Danni discoverable and callable via A2A and MCP protocols.
+
+FILES YOU OWN (edit ONLY these):
+- src/routes/.well-known/agent.json/+server.ts (exists — enhance to full A2A v1 spec)
+- src/routes/api/a2a/ (CREATE — JSON-RPC handler)
+- src/lib/a2a/ (CREATE — A2A protocol types and task manager)
+- src/lib/mcp/ (CREATE — MCP server and handlers)
+
+Read CLAUDE.md for project conventions. Read docs/INTERFACE-CONTRACTS.md Contract 5 for your spec.
+
+A2A SPEC: https://google.github.io/A2A/
+MCP SPEC: https://modelcontextprotocol.io/
+
+Implementation order:
+1. Create src/lib/a2a/types.ts — A2A protocol types (AgentCard, Task, TaskState, JSON-RPC messages)
+2. Create src/lib/a2a/task-manager.ts — in-memory task store with lifecycle (submitted → working → completed/failed)
+3. Enhance /.well-known/agent.json — full A2A v1 Agent Card (capabilities, skills, pricing with x402, auth scheme)
+4. Create src/routes/api/a2a/+server.ts — JSON-RPC 2.0 POST handler (tasks/send, tasks/get, tasks/cancel)
+5. Create src/lib/mcp/tools.ts — MCP tool definitions: brand_analysis ($100), competitive_scan ($5), market_pulse ($5)
+6. Create src/lib/mcp/handlers.ts — tool execution handlers (stub implementations that return correct types)
+7. Create src/routes/api/mcp/+server.ts — HTTP transport for MCP
+8. Run bun run check to verify
+
+Success: /.well-known/agent.json returns valid A2A card. /api/a2a handles JSON-RPC requests. MCP exposes 3 tools with x402 pricing. Both protocols have correct type definitions. Use bun add for any new packages. DO NOT modify files outside your boundary. DO NOT touch src/lib/x402/, src/lib/swarm/, src/lib/llm/, src/hooks.server.ts, or frontend routes.

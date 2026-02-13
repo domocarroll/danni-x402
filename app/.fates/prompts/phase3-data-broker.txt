@@ -1,0 +1,22 @@
+Build Phase 3: Data Broker. Wire 3 stub API endpoints to real data via Apify actors with cached fallback.
+
+FILES YOU OWN (edit ONLY these):
+- src/routes/api/data/competitive/+server.ts (stub exists — replace TODO)
+- src/routes/api/data/social/+server.ts (stub exists — replace TODO)
+- src/routes/api/data/market/+server.ts (stub exists — replace TODO)
+- src/lib/data/ (CREATE this directory for Apify client, cache, fallback)
+
+Read CLAUDE.md for project conventions. Read docs/INTERFACE-CONTRACTS.md Contract 2 for your spec. Read src/lib/types/data.ts for the TypeScript interfaces your responses must match.
+
+APIFY_API_KEY=apify_api_vG8zDDhSyrMM8uzmVeBTPXkDeRNBRf12kk1B
+
+Implementation order:
+1. Create src/lib/data/apify-client.ts — fetch-based Apify API wrapper (no SDK, just HTTP calls to https://api.apify.com/v2/)
+2. Create src/lib/data/cache.ts — file-based JSON cache with 1-hour TTL in .cache/ directory
+3. Create src/lib/data/fallback.ts — hardcoded realistic demo data (Nike brand, tech industry)
+4. Wire /api/data/competitive — Apify web scraper → CompetitiveData → cache → fallback on error
+5. Wire /api/data/social — Apify social scraper → SocialData → cache → fallback on error
+6. Wire /api/data/market — Apify Google Trends → MarketData → cache → fallback on error
+7. Run bun run check to verify TypeScript
+
+Success: all 3 endpoints return correct types. Cached fallback works when Apify is unavailable. Use bun add for any new packages. DO NOT modify files outside your boundary. DO NOT touch src/lib/x402/, src/lib/swarm/, src/lib/llm/, or src/hooks.server.ts.

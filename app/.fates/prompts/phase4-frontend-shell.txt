@@ -1,0 +1,30 @@
+Build Phase 4: Frontend Shell. Glass-box UI with chat, payment visualization, and swarm activity display.
+
+FILES YOU OWN (edit ONLY these):
+- src/routes/+page.svelte (enhance landing page)
+- src/routes/+layout.svelte (add global nav)
+- src/routes/chat/+page.svelte (full chat interface)
+- src/routes/dashboard/+page.svelte (payment dashboard)
+- src/lib/components/ (CREATE — all UI components)
+- src/lib/stores/ (CREATE — Svelte state management)
+
+Read CLAUDE.md for project conventions. Read docs/INTERFACE-CONTRACTS.md Contract 4 for your spec.
+
+DESIGN: Dark theme (#0a0a0a bg, #fafafa text, #6366f1 accent). system-ui font. Minimal, elegant, premium. Scoped style blocks only — NO external CSS frameworks.
+
+SVELTE 5 RUNES (CRITICAL — no legacy syntax):
+- $state(), $derived(), $effect(), $props() — NEVER export let, NEVER $:, NEVER on:click
+- Use onclick, onsubmit, etc. (lowercase, no colon)
+- Snippets: {#snippet name()}...{/snippet} + {@render name()}
+- Layout: let { children }: { children: Snippet } = $props()
+
+Implementation order:
+1. Create stores: src/lib/stores/chat.svelte.ts, swarm.svelte.ts, payments.svelte.ts (use $state runes)
+2. Enhance +layout.svelte — nav bar (Home | Chat | Dashboard), wallet status indicator
+3. Enhance +page.svelte — polished hero with animated entry, value proposition, CTA
+4. Build components: MessageBubble.svelte, AgentCard.svelte, SwarmViz.svelte, PaymentFlow.svelte
+5. Build chat/+page.svelte — message input, bubbles, SSE streaming display, swarm activity panel, payment flow viz
+6. Build dashboard/+page.svelte — transaction table with block explorer links (https://sepolia.basescan.org/tx/{hash}), summary stats
+7. Run bun run check to verify
+
+Success: landing page looks premium. Chat accepts input and shows mock swarm activity. Dashboard shows transaction history. All Svelte 5 runes, zero legacy. Responsive desktop layout. DO NOT modify files outside your boundary. DO NOT touch src/lib/x402/, src/lib/swarm/, src/lib/llm/, src/hooks.server.ts, or api/ routes.
