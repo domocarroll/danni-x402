@@ -7,6 +7,41 @@ import type { McpToolResult } from '$lib/mcp/tools.js';
 import { executeSwarm } from '$lib/swarm/orchestrator.js';
 import { getFallbackCompetitive, getFallbackMarket } from '$lib/data/index.js';
 
+function isRetryable(error: unknown): boolean {
+	if (error instanceof Error) {
+		const msg = error.message.toLowerCase();
+		return (
+			msg.includes('timeout') ||
+			msg.includes('econnrefused') ||
+			msg.includes('econnreset') ||
+			msg.includes('rate limit') ||
+			msg.includes('429') ||
+			msg.includes('503') ||
+			msg.includes('502')
+		);
+	}
+	return false;
+}
+
+function formatToolError(name: string, error: unknown): McpToolResult {
+	const message = error instanceof Error ? error.message : 'Tool execution failed unexpectedly';
+	const retryable = isRetryable(error);
+	return {
+		content: [
+			{
+				type: 'text',
+				text: JSON.stringify({
+					error: message,
+					tool: name,
+					retryable,
+					...(retryable && { retryAfterMs: 2000 }),
+				}),
+			},
+		],
+		isError: true,
+	};
+}
+
 export async function handleToolCall(
 	name: string,
 	args: Record<string, unknown> | undefined,
@@ -26,11 +61,7 @@ export async function handleToolCall(
 				};
 		}
 	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Tool execution failed unexpectedly';
-		return {
-			content: [{ type: 'text', text: `Internal error in ${name}: ${message}` }],
-			isError: true,
-		};
+		return formatToolError(name, error);
 	}
 }
 
@@ -49,11 +80,7 @@ async function handleBrandAnalysis(args: Record<string, unknown>): Promise<McpTo
 			content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
 		};
 	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Swarm execution failed';
-		return {
-			content: [{ type: 'text', text: `Error: ${message}` }],
-			isError: true,
-		};
+		return formatToolError('brand_analysis', error);
 	}
 }
 

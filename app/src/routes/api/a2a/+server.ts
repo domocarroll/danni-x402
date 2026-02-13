@@ -11,39 +11,13 @@ import {
 import type { JsonRpcResponse } from '$lib/a2a/types.js';
 import { taskManager, TaskNotFoundError, TaskNotCancelableError } from '$lib/a2a/task-manager.js';
 import {
-	IntentMandateSchema,
-	PaymentMandateSchema,
 	buildCartMandate,
 	buildPaymentReceipt,
 	buildPaymentMetadata,
 	isCartMandateExpired,
 } from '$lib/ap2/index.js';
+import { extractMandate } from '$lib/a2a/extract-mandate.js';
 import { env } from '$env/dynamic/private';
-
-function extractMandate(parts: Array<{ type: string; [key: string]: unknown }>): {
-	kind: 'intent' | 'payment' | 'malformed' | 'none';
-	data: unknown;
-	error?: string;
-} {
-	for (const part of parts) {
-		if (part.type !== 'data') continue;
-		const payload = 'data' in part ? part.data : undefined;
-		if (payload && typeof payload === 'object' && 'type' in (payload as Record<string, unknown>)) {
-			const obj = payload as Record<string, unknown>;
-			if (obj.type === 'ap2.mandates.IntentMandate') {
-				const parsed = IntentMandateSchema.safeParse(obj);
-				if (parsed.success) return { kind: 'intent', data: parsed.data };
-				return { kind: 'malformed', data: null, error: `Invalid IntentMandate: ${parsed.error.message}` };
-			}
-			if (obj.type === 'ap2.mandates.PaymentMandate') {
-				const parsed = PaymentMandateSchema.safeParse(obj);
-				if (parsed.success) return { kind: 'payment', data: parsed.data };
-				return { kind: 'malformed', data: null, error: `Invalid PaymentMandate: ${parsed.error.message}` };
-			}
-		}
-	}
-	return { kind: 'none', data: null };
-}
 
 function rpcSuccess(id: string | number, result: unknown): JsonRpcResponse {
 	return { jsonrpc: '2.0', id, result };
@@ -235,32 +209,26 @@ export const POST: RequestHandler = async ({ request }) => {
 								agentId,
 								endpoint: '/api/a2a',
 								transactionHash: txHash,
-								paymentAmount: payment.paymentPayload,
+								paymentAmount: cartAmount,
 							});
 						}
-				} catch (reputationErr) {
-					// Reputation feedback is non-fatal — log for debugging but don't block response
-					console.warn(
-						`[a2a] ERC-8004 reputation feedback failed (non-fatal): ${reputationErr instanceof Error ? reputationErr.message : 'unknown error'}`,
-					);
-				}
+					} catch {
+						// Reputation feedback is non-fatal
+					}
 
 					const finalTask = taskManager.getTask(completed.id)!;
 					return json(rpcSuccess(id, { task: finalTask }));
 				} catch (err) {
 					const msg = err instanceof Error ? err.message : 'Payment processing failed';
-				try {
-					taskManager.updateStatus(taskId, 'failed', {
-						role: 'agent',
-						parts: [{ type: 'text', text: `Payment failed: ${msg}` }],
-						metadata: buildPaymentMetadata('payment-failed'),
-					});
-				} catch (transitionErr) {
-					// Log state transition failure — task may already be in terminal state
-					console.warn(
-						`[a2a] Failed to transition task ${taskId} to 'failed': ${transitionErr instanceof Error ? transitionErr.message : 'unknown error'}. Original error: ${msg}`,
-					);
-				}
+					try {
+						taskManager.updateStatus(taskId, 'failed', {
+							role: 'agent',
+							parts: [{ type: 'text', text: `Payment failed: ${msg}` }],
+							metadata: buildPaymentMetadata('payment-failed'),
+						});
+					} catch {
+						// Already in terminal state
+					}
 					const failedTask = taskManager.getTask(taskId)!;
 					return json(rpcSuccess(id, { task: failedTask }));
 				}

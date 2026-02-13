@@ -225,9 +225,8 @@ class TaskManager {
 					role: 'agent',
 					parts: [{ type: 'text', text: `Task failed: ${message}` }],
 				});
-			} catch (transitionError) {
-				// If we cannot transition to failed (e.g. already in terminal state), log it
-				// Already in terminal state — transition silently rejected
+			} catch {
+				// Already in terminal state
 			}
 		}
 

@@ -1,36 +1,38 @@
-# Lachesis Dashboard — 2026-02-13 23:30 AEST
+# Lachesis Dashboard — 2026-02-14 00:42 AEST
 
 | Metric | Value |
 |--------|-------|
-| **Drift Index** | 0.15 (LOW — hardening, not drifting) |
+| **Drift Index** | 0.08 (MINIMAL — polishing, not drifting) |
 | **Build** | GREEN — svelte-check 0 errors, 0 warnings |
-| **Tests** | GREEN — 85/85 passing, 3 suites (expanding) |
-| **Uncommitted** | 19 modified + 9 untracked = 28 items, +1529/-400 |
-| **Hours Left** | 18.5h (deadline 2026-02-14 17:59 AEST) |
-| **Progress** | 76% demo-ready |
-| **Velocity** | HIGH — Sisyphus cycle 2, background agent swarm active |
-| **Top Concern** | 1529 uncommitted lines — **6th consecutive cycle flagging**. COMMIT NOW. |
-| **Recommendation** | COMMIT NOW. Fund wallet (2min human). Let hardening finish. SHIP mode by 08:00. |
+| **Tests** | GREEN — 136/136 passing, 6 suites |
+| **Commits** | 5 clean commits since night shift start |
+| **Hours Left** | 17.3h (deadline 2026-02-14 17:59 AEST) |
+| **Progress** | 88% demo-ready |
+| **Velocity** | SUSTAINED — receipt fix, console cleanup, README updated |
+| **Top Concern** | ERC-8004 on-chain registration still BLOCKED (0 ETH). Deploy config needed. |
+| **Recommendation** | Fund wallet (2min human). Build deploy config. Demo video by 08:00. |
 
 ## Priority Matrix
 
 | Pri | Track | Status | % | Blocker |
 |-----|-------|--------|---|---------|
-| P1 | AP2 mandate lifecycle | DONE | 95 | — |
+| P1 | AP2 mandate lifecycle | DONE | 98 | Receipt amount fix committed |
+| P1 | A2A x402 payment flow | DONE | 95 | Full flow validated |
 | P1 | ERC-8004 on-chain | BLOCKED | 10 | 0 ETH in wallet |
-| P1 | A2A x402 payment flow | NEAR | 85 | AP2→x402 wiring |
-| P2 | MCP transport | NEAR | 80 | Tool registration |
-| P2 | Test coverage | EXPANDING | 100→120+ | Sisyphus adding more |
+| P2 | MCP transport + gating | DONE | 95 | Production handlers, no localhost |
+| P2 | Test coverage | DONE | 136/136 | 6 suites, 3 protocol layers |
+| P2 | Frontend polish | DONE | 85 | A11y + mobile breakpoints shipped |
 | P2 | SKALE dual-chain | WIRED | 70 | Needs facilitator test |
-| P2 | Frontend polish | PARTIAL | 60 | Visual pass needed |
-| P3 | Demo video | NOT STARTED | 0 | No live URL yet |
+| P3 | Deploy config | NOT STARTED | 0 | Needs adapter selection |
+| P3 | Demo video | NOT STARTED | 0 | Needs live URL |
 | P3 | DoraHacks submission | NOT STARTED | 0 | Depends on demo |
 
-## Agent Status
+## Commits This Session
 
-| Agent | State | Context | Last Action |
-|-------|-------|---------|-------------|
-| Sisyphus (OpenCode) | ACTIVE | 72% | Cycle 2 — bg agents for test coverage, ERC-8004 tests in progress |
-| Lachesis (this) | CYCLE 5 | — | Dashboard refresh |
-| Clotho | ACTIVE | — | Provenance thr_030 written |
-| Atropos | WATCHING | — | Safety monitoring |
+| Hash | Summary |
+|------|---------|
+| b0dd597 | fix(a2a): extract cart amount from artifact for accurate receipts |
+| c356bd2 | fix(ui): accessibility labels + mobile breakpoints |
+| a8535bc | feat(hardening): MCP production fix, task-manager optimization |
+| 609673a | fix(ap2): harden edge cases |
+| e26c144 | feat(tracks-1-3): AP2 v0.2 + ERC-8004 + SKALE |

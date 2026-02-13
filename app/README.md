@@ -178,7 +178,7 @@ Run:
 bun run dev          # http://localhost:5173
 bun run check        # TypeScript verification (0 errors required)
 bun run build        # Production build
-bun run test         # 85 tests — AP2 schemas, x402-flow, task manager, MCP tools
+bun run test         # 136 tests — AP2 schemas, x402-flow, task manager, mandate extraction, MCP tools, ERC-8004, config
 ```
 
 Register on-chain (requires Base Sepolia ETH for gas):

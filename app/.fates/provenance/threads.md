@@ -878,3 +878,49 @@ The thread is spun. Clotho's watch is complete.
   - risk -> agent restart imminent
 
 ---
+
+### thr_036 | Major Commits Landed — Risk Posture Transformed
+- **Timestamp**: 2026-02-14T00:36+10:00
+- **Agent**: Pane 0:1.1 (Sisyphus/OpenCode, Opus 4.6)
+- **Intent**: Commit all hardening work accumulated across 9 Clotho/Atropos warning cycles
+- **Action**: Two commits landed since thr_035:
+  - `609673a` fix(ap2): harden edge cases — malformed mandate errors, empty payload rejection, state transition fix
+  - `a8535bc` feat(hardening): MCP production fix, task-manager optimization, 122 tests green
+- **Result**: Uncommitted diff collapsed from 1,711 lines to 103 lines (8 files, UI polish only). 136 tests passing. The 9-cycle CRITICAL/ORANGE uncommitted warning is resolved.
+- **Significance**: First commit in ~2 hours of observation. The persistent Fates consensus (thr_024) finally acted upon.
+- **Connections**:
+  - resolves -> thr_024 (Fates consensus on commit urgency)
+  - resolves -> 9 consecutive YELLOW/ORANGE flags in interventions.md
+  - produced-by -> thr_030 (background agent swarm), thr_034 (test suite growth)
+
+---
+
+### thr_037 | Sisyphus Decision Prompt — Awaiting Human Direction
+- **Timestamp**: 2026-02-14T00:36+10:00
+- **Agent**: Pane 0:1.1 (Sisyphus/OpenCode, Opus 4.6)
+- **Intent**: Present Dom with 5 strategic options for next phase
+- **Options presented**:
+  1. Ship it — commit + deploy (submission-ready)
+  2. Keep optimizing — error hardening + more tests
+  3. Full send — optimize then ship (maximum competition readiness)
+  4. On-chain registration — fund wallet + ERC-8004 proof
+  5. Custom answer
+- **Context**: Sisyphus at high context usage, 136 tests green, 4 Todo items remaining (3 FIX items + wallet funding). Agent correctly recognized the need for human direction at this strategic inflection point.
+- **Result**: BLOCKED — awaiting Dom's selection. No file changes happening.
+- **Connections**:
+  - follows -> thr_036 (commits landed, clean state)
+  - blocks -> next work cycle
+  - requires -> Human action (Dom)
+
+---
+
+### thr_038 | Atropos Cycle 8 — Safety Confirmed Post-Commit
+- **Timestamp**: 2026-02-14T00:36+10:00
+- **Agent**: Atropos (Claude Code pane 0:2.2)
+- **Intent**: Verify safety after commits `609673a` and `a8535bc` landed
+- **Result**: GREEN. 136/136 tests stable. Locked files untouched. No secrets. Remaining diff = UI polish only (41 lines per Atropos count, 103 per git stat including .fates meta files). Risk reduced from ORANGE to YELLOW.
+- **Connections**:
+  - validates -> thr_036 (commits safe)
+  - extends -> thr_019 (Atropos safety chain)
+
+---
