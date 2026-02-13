@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 2 of 8 (Swarm Engine)
-Plan: 1 of 3 in current phase
-Status: Phase 2 in progress. Plan 01 COMPLETE (LLM infrastructure).
-Last activity: 2026-02-13 07:52 — Phase 2 Plan 1 committed (4d5ae07), LLM provider ready
+Plan: 2 of 3 in current phase
+Status: Phase 2 in progress. Plans 01-02 COMPLETE (LLM + agent prompts).
+Last activity: 2026-02-13 17:56 — Phase 2 Plan 2 committed (f177025), agent prompts created
 
-Progress: [██░░░░░░░░] 20%
+Progress: [██░░░░░░░░] 25%
 
 ## Phase 1 Completion Summary
 
@@ -30,14 +30,15 @@ All 7 success criteria verified:
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: ~16 min
-- Total execution time: 0.53 hours
+- Total plans completed: 3
+- Average duration: ~13 min
+- Total execution time: 0.65 hours
 
 | Phase | Plan | Duration | Files | Tasks | Completed |
 |-------|------|----------|-------|-------|-----------|
 | 01    | 01   | ~30 min  | 7     | 1     | 2026-02-13 |
 | 02    | 01   | 2 min    | 5     | 2     | 2026-02-13 |
+| 02    | 02   | 7 min    | 5     | 2     | 2026-02-13 |
 
 ## Accumulated Context
 
@@ -50,13 +51,17 @@ All 7 success criteria verified:
 - CLI-first LLM approach: using `claude -p` for free dev/testing, API backend deferred to Phase 6
 - 120-second timeout for LLM completions with proper process cleanup
 - Dual validation: TypeScript interfaces + zod schemas for runtime safety
+- Agent prompts mandate structured output sections (not free-form) - graph nodes, not throwaway text
+- Sub-agent prompts under 1500 words, synthesis under 2500 words - leaves room for context
+- Voice instruction: "You ARE this analyst" shifts LLM from meta-commentary to execution mode
+- Explicit confidence calibration: agents state when inferring vs citing data
 
 ### Pending Todos
 
 - Fund wallet from Circle faucet (Base Sepolia USDC)
-- Complete Phase 2 Plan 02: Agent prompts (5 prompts based on SUBFRAC.OS modules)
 - Complete Phase 2 Plan 03: Orchestrator (parallel execution with p-map)
 - Spin up OpenCode Sisyphus for Phases 3-5
+- Test agent prompts with sample brief (validate output quality)
 
 ### Blockers/Concerns
 
@@ -66,6 +71,6 @@ All 7 success criteria verified:
 
 ## Session Continuity
 
-Last session: 2026-02-13 07:52
-Stopped at: Phase 2 Plan 1 complete, ready for Plan 2 (agent prompts)
-Resume file: .planning/phases/02-swarm-engine/02-01-SUMMARY.md
+Last session: 2026-02-13 17:56
+Stopped at: Phase 2 Plan 2 complete, ready for Plan 3 (orchestrator)
+Resume file: .planning/phases/02-swarm-engine/02-02-SUMMARY.md
