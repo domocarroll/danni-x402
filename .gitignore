@@ -1,0 +1,8 @@
+# Planning files (GSD internal state)
+.planning/
+
+# Node
+node_modules/
+
+# Vault (separate knowledge base, not code)
+# vault/
