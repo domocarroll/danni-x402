@@ -26,7 +26,12 @@ export async function executeSwarm(
 	// Use external tracker if provided (e.g. StreamingTracker for SSE), else create default
 	const tracker = externalTracker ?? new SubagentTracker();
 
-	// Define the four sub-agents to run in parallel
+	// Stagger delay to avoid rate limiting (1s between launches)
+	// All 4 agents run concurrently but their API calls don't collide
+	const STAGGER_MS = 1000;
+	const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+	// Define the four sub-agents with staggered launch
 	const subAgentTasks = [
 		() =>
 			runMarketAnalyst({
@@ -37,32 +42,38 @@ export async function executeSwarm(
 				tracker
 			}),
 		() =>
-			runCompetitiveIntel({
-				provider,
-				brief: input.brief,
-				brand: input.brand,
-				industry: input.industry,
-				tracker
-			}),
+			delay(STAGGER_MS).then(() =>
+				runCompetitiveIntel({
+					provider,
+					brief: input.brief,
+					brand: input.brand,
+					industry: input.industry,
+					tracker
+				})
+			),
 		() =>
-			runCulturalResonance({
-				provider,
-				brief: input.brief,
-				brand: input.brand,
-				industry: input.industry,
-				tracker
-			}),
+			delay(STAGGER_MS * 2).then(() =>
+				runCulturalResonance({
+					provider,
+					brief: input.brief,
+					brand: input.brand,
+					industry: input.industry,
+					tracker
+				})
+			),
 		() =>
-			runBrandArchitect({
-				provider,
-				brief: input.brief,
-				brand: input.brand,
-				industry: input.industry,
-				tracker
-			})
+			delay(STAGGER_MS * 3).then(() =>
+				runBrandArchitect({
+					provider,
+					brief: input.brief,
+					brand: input.brand,
+					industry: input.industry,
+					tracker
+				})
+			)
 	];
 
-	// Execute all four sub-agents in parallel with concurrency: 4
+	// Execute all four sub-agents in parallel (stagger handles rate limiting)
 	const subAgentResults = await pMap(subAgentTasks, (task) => task(), { concurrency: 4 });
 
 	// After all four complete, run Danni synthesis with their combined outputs
