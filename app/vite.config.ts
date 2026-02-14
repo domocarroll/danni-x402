@@ -5,6 +5,9 @@ export default defineConfig({
 	plugins: [sveltekit()],
 	test: {
 		include: ['src/**/*.test.ts'],
+		exclude: ['e2e/**', 'node_modules/**', '.svelte-kit/**'],
 		environment: 'node',
+		isolate: true,
+		pool: 'forks',
 	},
 });

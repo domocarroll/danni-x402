@@ -43,6 +43,12 @@
 		}
 	}
 
+	function autoResize(e: Event) {
+		const textarea = e.target as HTMLTextAreaElement;
+		textarea.style.height = 'auto';
+		textarea.style.height = Math.min(textarea.scrollHeight, 160) + 'px';
+	}
+
 	function agentNameToKey(name: string): 'market' | 'competitive' | 'cultural' | 'brand' | null {
 		if (name.includes('Market')) return 'market';
 		if (name.includes('Competitive')) return 'competitive';
@@ -251,13 +257,24 @@
 			{#if chatStore.messages.length === 0}
 				<div class="empty-state">
 					<div class="empty-icon" aria-hidden="true">
-						<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1">
+						<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="1" opacity="0.5">
 							<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
 						</svg>
 					</div>
 					<h2>What intrigues me most...</h2>
 					<p>Tell me about your brand. The market you're navigating. The audience you're trying to reach. I'll activate five specialist analysts and deliver a strategic brief a creative director could build a campaign from.</p>
-					<p class="powered-by">Powered by x402 • Base Sepolia</p>
+					<div class="example-prompts">
+						<button type="button" class="example-prompt" onclick={() => { chatStore.input = 'Nike is losing cultural relevance with Gen Z. How should they reposition?'; }}>
+							Nike repositioning for Gen Z
+						</button>
+						<button type="button" class="example-prompt" onclick={() => { chatStore.input = 'We\'re launching a premium DTC skincare brand targeting millennials in the US. What\'s our strategic angle?'; }}>
+							DTC skincare launch strategy
+						</button>
+						<button type="button" class="example-prompt" onclick={() => { chatStore.input = 'Patagonia owns sustainability in outdoor. How can a new entrant compete?'; }}>
+							Competing with Patagonia
+						</button>
+					</div>
+					<p class="powered-by">Powered by x402 • $100 USDC • Base Sepolia</p>
 				</div>
 			{:else}
 				{#each chatStore.messages as message (message.id)}
@@ -304,9 +321,10 @@
 					bind:this={inputRef}
 					bind:value={chatStore.input}
 					placeholder="Describe your brand challenge..."
-					rows="2"
+					rows="1"
 					disabled={chatStore.isStreaming}
 					onkeydown={handleKeydown}
+					oninput={autoResize}
 				></textarea>
 				{#if walletStore.state === 'connected'}
 					<button type="submit" disabled={!chatStore.input.trim() || chatStore.isStreaming} class="send-btn" aria-label="Send message">
@@ -414,10 +432,37 @@
 		line-height: 1.6;
 	}
 
+	.example-prompts {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		justify-content: center;
+		margin-top: 0.75rem;
+		max-width: 500px;
+	}
+
+	.example-prompt {
+		padding: 0.5rem 0.875rem;
+		background: rgba(99, 102, 241, 0.06);
+		border: 1px solid rgba(99, 102, 241, 0.15);
+		border-radius: 2rem;
+		color: #888;
+		font-size: 0.8rem;
+		cursor: pointer;
+		transition: background 0.2s, color 0.2s, border-color 0.2s;
+		font-family: inherit;
+	}
+
+	.example-prompt:hover {
+		background: rgba(99, 102, 241, 0.12);
+		color: #ccc;
+		border-color: rgba(99, 102, 241, 0.3);
+	}
+
 	.powered-by {
 		font-size: 0.75rem !important;
 		color: #444 !important;
-		margin-top: 0.5rem;
+		margin-top: 1rem;
 		letter-spacing: 0.03em;
 	}
 

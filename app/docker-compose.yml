@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  danni:
+    image: danni-commerce-agent:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: danni-commerce-agent
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      # Server
+      - NODE_ENV=production
+      - PORT=3000
+      - ORIGIN=https://danni.subfrac.cloud
+
+      # Wallet Configuration
+      - WALLET_ADDRESS=${WALLET_ADDRESS}
+      - WALLET_PRIVATE_KEY=${WALLET_PRIVATE_KEY}
+
+      # API Keys
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - APIFY_API_KEY=${APIFY_API_KEY}
+
+      # x402 Configuration
+      - X402_NETWORK=eip155:84532
+      - X402_FACILITATOR=https://x402.org/facilitator
+
+      # LLM Provider (cli for dev, api for prod)
+      - USE_CLI=false
+
+    volumes:
+      # Session data persistence
+      - danni-sessions:/app/.sessions
+      # Transaction logs
+      - danni-logs:/app/.logs
+
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/.well-known/agent.json']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    networks:
+      - danni-network
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+volumes:
+  danni-sessions:
+    driver: local
+  danni-logs:
+    driver: local
+
+networks:
+  danni-network:
+    driver: bridge

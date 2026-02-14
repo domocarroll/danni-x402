@@ -1,5 +1,32 @@
 <script lang="ts">
 	import UnicornHero from '$lib/components/UnicornHero.svelte';
+
+	function reveal(node: HTMLElement) {
+		node.style.opacity = '0';
+		node.style.transform = 'translateY(24px)';
+		node.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				for (const entry of entries) {
+					if (entry.isIntersecting) {
+						node.style.opacity = '1';
+						node.style.transform = 'translateY(0)';
+						observer.unobserve(node);
+					}
+				}
+			},
+			{ threshold: 0.15 }
+		);
+
+		observer.observe(node);
+
+		return {
+			destroy() {
+				observer.disconnect();
+			}
+		};
+	}
 </script>
 
 <svelte:head>
@@ -21,7 +48,7 @@
 		</div>
 	</section>
 
-	<section class="pricing">
+	<section class="pricing" use:reveal>
 		<h2>Choose Your Depth</h2>
 		<div class="pricing-grid">
 			<div class="pricing-card">
@@ -58,14 +85,14 @@
 		</div>
 	</section>
 
-	<section class="danni-quote">
+	<section class="danni-quote" use:reveal>
 		<blockquote>
 			"I've noticed something fascinating about brands that endure — they don't just sell products, they resolve cultural contradictions."
 		</blockquote>
 		<cite>— Danni</cite>
 	</section>
 
-	<section class="features">
+	<section class="features" use:reveal>
 		<div class="feature-card">
 			<div class="feature-icon">
 				<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="1.5">
@@ -97,7 +124,7 @@
 		</div>
 	</section>
 
-	<section class="steps">
+	<section class="steps" use:reveal>
 		<h2>How It Works</h2>
 		<div class="steps-grid">
 			<div class="step">
@@ -128,7 +155,7 @@
 		</div>
 	</section>
 
-	<section class="footer-cta">
+	<section class="footer-cta" use:reveal>
 		<h2>Ready to see your brand differently?</h2>
 		<p>One brief. Five perspectives. Complete transparency.</p>
 		<a href="/chat" class="cta">Begin Analysis</a>
@@ -217,7 +244,6 @@
 
 	.pricing {
 		padding: 3rem 0 4rem;
-		animation: fadeUp 0.8s ease-out 0.15s both;
 	}
 
 	.pricing h2 {
@@ -351,7 +377,6 @@
 	.danni-quote {
 		text-align: center;
 		padding: 3rem 0 4rem;
-		animation: fadeUp 0.8s ease-out 0.3s both;
 	}
 
 	.danni-quote blockquote {
@@ -378,7 +403,6 @@
 		grid-template-columns: repeat(3, 1fr);
 		gap: 1.5rem;
 		padding: 3rem 0 5rem;
-		animation: fadeUp 0.8s ease-out 0.45s both;
 	}
 
 	.feature-card {
@@ -412,7 +436,6 @@
 
 	.steps {
 		padding: 3rem 0 5rem;
-		animation: fadeUp 0.8s ease-out 0.6s both;
 	}
 
 	.steps h2 {
@@ -473,7 +496,6 @@
 		text-align: center;
 		padding: 4rem 0 6rem;
 		border-top: 1px solid #1a1a1a;
-		animation: fadeUp 0.8s ease-out 0.75s both;
 	}
 
 	.footer-cta h2 {
@@ -497,6 +519,29 @@
 			opacity: 1;
 			transform: translateY(0);
 		}
+	}
+
+	.cta {
+		display: inline-block;
+		padding: 0.875rem 2.5rem;
+		background: #6366f1;
+		color: white;
+		border-radius: 0.5rem;
+		font-size: 1rem;
+		font-weight: 500;
+		letter-spacing: 0.02em;
+		transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+	}
+
+	.cta:hover {
+		background: #4f46e5;
+		transform: translateY(-1px);
+		box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+	}
+
+	.cta:active {
+		transform: translateY(0);
+		box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
 	}
 
 	@media (max-width: 768px) {

@@ -17,6 +17,11 @@ logs
 .DS_Store
 .vite
 
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+
 # Internal tooling (agent orchestration, build provenance)
 .fates/
 .sisyphus/
