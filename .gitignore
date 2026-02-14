@@ -1,8 +1,15 @@
-# Planning files (GSD internal state)
+# Internal tooling (agent orchestration, planning state)
 .planning/
+.sisyphus/
+.agent-teams/
+.fates/
+vault/
 
 # Node
 node_modules/
+
+# Build output
+nohup.out
 
 # Vault (separate knowledge base, not code)
 # vault/
