@@ -1,26 +1,12 @@
-import { readFile } from 'fs/promises';
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { getPrompt } from '$lib/swarm/prompts/index.js';
 
 /**
- * Load a prompt file from the prompts directory
- * @param filename - Name of the prompt file (e.g., 'market-analyst.txt')
- * @returns Trimmed prompt content
+ * Load a prompt by filename.
+ * Uses the prompt registry (Vite ?raw imports) — no filesystem access needed at runtime.
+ * Kept async for backward compatibility with existing agent code.
  */
 export async function loadPrompt(filename: string): Promise<string> {
-	try {
-		// Resolve path relative to this module's location
-		const currentDir = dirname(fileURLToPath(import.meta.url));
-		const promptPath = resolve(currentDir, 'prompts', filename);
-
-		const content = await readFile(promptPath, 'utf-8');
-		return content.trim();
-	} catch (error) {
-		if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
-			throw new Error(`Prompt file not found: ${filename}`);
-		}
-		throw error;
-	}
+	return getPrompt(filename);
 }
 
 /**
