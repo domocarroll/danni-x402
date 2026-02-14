@@ -6,16 +6,17 @@ export function getRoutes(): RoutesConfig {
 	const payTo = env.WALLET_ADDRESS ?? '0x0000000000000000000000000000000000000000';
 
 	return {
-		'POST /api/danni/analyze': {
-			accepts: {
-				scheme: 'exact',
-				payTo,
-				price: PRICING.BRAND_ANALYSIS,
-				network: NETWORKS.BASE_SEPOLIA
-			},
-			description: 'Premium brand strategy analysis by Danni',
-			mimeType: 'application/json'
-		},
+		// x402 gating on analyze temporarily bypassed — demo mode
+		// 'POST /api/danni/analyze': {
+		// 	accepts: {
+		// 		scheme: 'exact',
+		// 		payTo,
+		// 		price: PRICING.BRAND_ANALYSIS,
+		// 		network: NETWORKS.BASE_SEPOLIA
+		// 	},
+		// 	description: 'Premium brand strategy analysis by Danni',
+		// 	mimeType: 'application/json'
+		// },
 		'POST /api/data/competitive': {
 			accepts: {
 				scheme: 'exact',

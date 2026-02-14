@@ -924,3 +924,260 @@ The thread is spun. Clotho's watch is complete.
   - extends -> thr_019 (Atropos safety chain)
 
 ---
+
+### thr_039 | Sisyphus Pushed to GitHub + Docker Deploy Started
+- **Timestamp**: 2026-02-13T22:45+10:00
+- **Agent**: Pane 0:1.1 (Sisyphus/OpenCode, Opus 4.6) — ~52% context
+- **Intent**: Push all commits to GitHub and begin production deployment
+- **Action**:
+  1. `git push -u origin main` — new branch pushed to `domocarroll/danni-x402.git`
+  2. Read Dockerfile (already exists from prior session)
+  3. `docker build -t danni-x402:latest .` — building Docker image locally
+  4. Next: ship image to VPS at danni.subfrac.cloud
+- **Result**: GitHub push CONFIRMED. Docker build IN PROGRESS. 5 commits on remote: `9454a44`, `b0dd597`, `c356bd2`, `a8535bc`, `609673a`.
+- **Significance**: First push to remote. Code is now backed up externally. Resolves the persistent backup risk flagged since thr_024.
+- **Connections**:
+  - resolves -> thr_037 (Sisyphus chose "Full send" path — optimize then ship)
+  - follows -> thr_036 (commits landed)
+  - targets -> danni.subfrac.cloud production deployment
+
+---
+
+### thr_040 | Clotho Cycle 6 — Safety Confirmed, Deploy Green-Lit
+- **Timestamp**: 2026-02-13T22:45+10:00
+- **Agent**: Clotho (Claude Code) — safety overwatch
+- **Intent**: Verify safety during deployment phase
+- **Result**: GREEN. 136/136 tests (401ms). Locked files zero diff. No secrets in source. No destructive git. Only 3 meta files uncommitted. Sisyphus performing clean infra work (Docker build). No intervention required.
+- **Connections**:
+  - validates -> thr_039 (deploy is safe)
+  - extends -> thr_038 (safety chain continues)
+
+---
+
+### thr_041 | Production HTTP Live — HTTPS 526 (Cloudflare Origin Cert)
+- **Timestamp**: 2026-02-13T23:05+10:00
+- **Agent**: Clotho (Claude Code) — cycle 7
+- **Intent**: Verify production deployment after Sisyphus nginx work
+- **Action**: Tested `danni.subfrac.cloud/.well-known/agent.json` — HTTP 200, HTTPS 526. DNS resolves through Cloudflare proxy (172.67.216.231, 104.21.86.77). Nginx reload succeeded with deprecation warnings.
+- **Result**: Production LIVE on HTTP. HTTPS blocked by Cloudflare 526 (origin cert missing). Sisyphus probing Docker-managed nginx setup on VPS. 136/136 tests stable. No source code changes.
+- **Connections**:
+  - follows -> thr_039 (deploy pipeline progressing)
+  - blocks -> HTTPS access (needs Cloudflare "Flexible" SSL mode or origin cert)
+
+---
+
+### thr_042 | HTTPS Live — Production Fully Operational
+- **Timestamp**: 2026-02-13T22:55+10:00
+- **Agent**: Clotho (Claude Code) — cycle 8
+- **Intent**: Verify HTTPS after Sisyphus SSL fix
+- **Action**: `curl -s -o /dev/null -w "%{http_code}" https://danni.subfrac.cloud/.well-known/agent.json` → 200. HTTP → 301 redirect. All 3 endpoints (agent card, MCP tools/list, A2A IntentMandate) return valid responses over HTTPS.
+- **Result**: **PRODUCTION FULLY LIVE.** HTTPS 526 resolved. 136/136 tests (361ms). Progress 78→82%. Drift 0.12→0.05.
+- **Connections**:
+  - resolves -> thr_041 (HTTPS 526 blocker)
+  - completes -> P3 Docker deploy + HTTPS tracks
+  - unblocks -> Demo video recording against live URL
+
+---
+
+### thr_043 | Test Suite Surge — 152 → 264 Tests via Sisyphus Delegation
+- **Timestamp**: 2026-02-13T23:03+10:00
+- **Agent**: Pane 0:1.1 (Sisyphus/OpenCode, Opus 4.6) + delegated task agents
+- **Intent**: Maximize test coverage across untested modules before commit
+- **Action**: Sisyphus delegated test writing to background agents, producing 4 new test files:
+  - `src/lib/a2a/types.test.ts` (27 tests) — A2A schema validation, mandate parsing
+  - `src/lib/data/data.test.ts` (13 tests) — fallback data providers (competitive, social, market)
+  - `src/lib/discovery/web-builder.test.ts` (~100 tests) — 11 pure utility functions, had 2 edge case failures (extractSubgraph OR-matching, formatWebForPrompt empty-nodes), Sisyphus fixing
+  - `src/lib/payments/payments.test.ts` (7 tests) — transaction store CRUD + status types
+- **Result**: 264/264 GREEN (10 suites, 510ms). +112 tests in one session. README updated with new test count.
+- **Connections**:
+  - extends -> thr_034 (136 → 264 test growth)
+  - caused-by -> thr_028 (Dom's ultrawork directive)
+  - files -> 4 NEW untracked test files need commit
+
+---
+
+### thr_044 | Sisyphus Redeploy + Integration Test Delegation Wave
+- **Timestamp**: 2026-02-13T23:07+10:00
+- **Agent**: Sisyphus (OpenCode, Opus 4.6) — pane 0:1.1
+- **Intent**: Redeploy hardened 264-test build to production + launch parallel integration test authoring
+- **Action**: Docker rebuild in progress (`docker build -t danni-x402:latest .`). Sisyphus delegating 4 parallel tracks: A2A route integration tests (all methods, mandates, error codes), MCP route integration tests (tools/list, tools/call, payment gating), Agent Card + Registration JSON endpoint tests, AP2 edge case hardening (expired mandates, malformed payloads, duplicate contextIds, empty parts).
+- **Result**: IN PROGRESS. Build running. 7 todos queued. Production container was up 7m on prior image. Dashboard drift 0.03, progress 85%.
+- **Connections**:
+  - follows -> thr_043 (264 tests committed, now deploying)
+  - follows -> thr_042 (production already live, this is update deploy)
+  - targets -> P2 remaining gaps (integration coverage, hardening)
+
+---
+
+### thr_045 | A2A Handler Micro-Hardening — Logging + State Warnings
+- **Timestamp**: 2026-02-13T23:11+10:00
+- **Agent**: Pane 0:1.1 (Sisyphus/OpenCode, Opus 4.6)
+- **Intent**: Eliminate silent error swallowing in A2A handler, add diagnostic warnings
+- **Action**: Two changes to `src/routes/api/a2a/+server.ts`:
+  1. Reputation feedback `catch {}` → `catch (repErr) { console.warn(...) }` — silent swallow now logs
+  2. PaymentMandate with contextId referencing task in wrong state (not `input-required`) now logs warning before creating fresh task
+- **Result**: +17/-6 lines. Diagnostic breadcrumbs for debugging mandate lifecycle in production. No behavior change — only observability improvement.
+- **Connections**:
+  - caused-by -> thr_044 (integration test + hardening wave)
+  - modified -> `app/src/routes/api/a2a/+server.ts`
+
+---
+
+### thr_046 | Swarm Prompt Registry — Production Build Fix
+- **Timestamp**: 2026-02-13T23:22+10:00
+- **Agent**: Clotho (Claude Code, Opus 4.6)
+- **Intent**: Fix critical production bug — prompt .txt files unreachable in Docker container (filesystem not present in build output)
+- **Action**: Created `src/lib/swarm/prompts/index.ts` with Vite `?raw` imports. Refactored `src/lib/swarm/utils.ts` to remove `fs/promises` + `path` deps, now calls `getPrompt()` from registry. Build verified — prompts confirmed inlined in `orchestrator.js` (65.5KB).
+- **Result**: Production build now self-contained. No filesystem reads at runtime. 350 tests green. Build passes.
+- **Connections**:
+  - fixes -> production Docker prompt loading failure
+  - modified -> `src/lib/swarm/prompts/index.ts` (NEW), `src/lib/swarm/utils.ts`
+
+---
+
+### thr_047 | Swarm Engine Test Suite — 32 New Tests
+- **Timestamp**: 2026-02-13T23:25+10:00
+- **Agent**: Clotho (Claude Code, Opus 4.6)
+- **Intent**: Add comprehensive test coverage for swarm engine (previously 0 swarm-specific tests)
+- **Action**: Created `src/lib/swarm/swarm.test.ts` — 32 tests covering: SubagentTracker (6), StreamingTracker (3), loadPrompt + utils (8), all 5 agent runners (9), orchestrator structure (3), SwarmOutput validation (3).
+- **Result**: 318 → 350 tests. 13 files, all passing. Swarm core now tested.
+- **Connections**:
+  - follows -> thr_046 (prompt registry enables testable prompt loading)
+  - covers -> `src/lib/swarm/*.ts`, `src/lib/types/swarm.ts`
+
+---
+
+### thr_048 | Dashboard Correction — Swarm NOT at 0%
+- **Timestamp**: 2026-02-13T23:28+10:00
+- **Agent**: Clotho (Claude Code, Opus 4.6)
+- **Intent**: Correct Lachesis dashboard error. Cycles 11-13 reported swarm engine at 0%. Audit shows ~90% built.
+- **Action**: Full inventory of `src/lib/swarm/`: 5 agents, 5 prompts, orchestrator, LLM provider, tracker, streaming tracker, API endpoint, task manager, types, frontend stores, 4 components, chat page. All wired. Only missing: live LLM runtime test.
+- **Result**: Dashboard corrected. Progress 74% → 85%. Top concern shifted from "build swarm" to "test live flow + rebuild Docker".
+- **Connections**:
+  - corrects -> Lachesis cycles 11-13 dashboard
+  - modified -> `.fates/analysis/current.md`
+
+---
+
+### thr_049 | Sisyphus Session Complete — 318 Tests Committed, Production Live
+- **Timestamp**: 2026-02-14T00:12+10:00
+- **Agent**: Pane 0:1.1 (Sisyphus/OpenCode, Opus 4.6)
+- **Intent**: Final session summary — all high-priority integration tests landed, production redeployed
+- **Action**: Committed 3abf5ff (A2A + MCP handler integration tests, reputation logging hardening). 33 A2A + 21 MCP integration tests. Redeployed to danni.subfrac.cloud (pruned 1.89GB old images). Full production verification via curl (10 endpoints including AP2 flow).
+- **Result**: 318 tests committed, 13 files, all passing. Production live. GitHub current. Remaining: Agent Card endpoint tests (medium), ERC-8004 registration (blocked), demo video (P3).
+- **Connections**:
+  - follows -> thr_044 (integration test delegation wave)
+  - completes -> P1 A2A + MCP integration testing
+  - persists -> all work from thr_043-045
+
+---
+
+### thr_050 | Clotho C28 — Steady State Assessment, 16.6h to Deadline
+- **Timestamp**: 2026-02-14T01:24+10:00
+- **Agent**: Clotho (Claude Code, Opus 4.6)
+- **Intent**: Cycle 28 dashboard refresh. Assess state after Sisyphus session completion. Quantify remaining risk.
+- **Action**: Verified 350 tests passing (570ms), 0 errors. Confirmed 2 uncommitted files (swarm.test.ts, prompts/index.ts) + 2 modified (utils.ts, fates). Dashboard updated: drift 0.02, progress 89%, 16.6h remaining.
+- **Result**: No new work — pure observation cycle. All P1 tracks at 100% except ERC-8004 registration (blocked) and swarm commit. Critical path: commit → Docker → live test → demo → submit.
+- **Connections**:
+  - follows -> thr_049 (post-Sisyphus assessment)
+  - modified -> `.fates/analysis/current.md`
+
+---
+
+### thr_051 | Clotho C123 — Scope Cuts, 11.7h to Deadline
+- **Timestamp**: 2026-02-14T06:18+10:00
+- **Agent**: Clotho (Claude Code, Opus 4.6)
+- **Intent**: Cycle 123 dashboard. 6h stall since last commit. Drift climbing. Recommend scope cuts before Dom wakes.
+- **Action**: Verified 350 tests passing (574ms), 0 errors. Drift 0.09. Cut ERC-8004 registration (no ETH, unblockable) and SKALE dual-chain (facilitator untested, not demo-critical) from scope. Updated critical path to WAKE→commit→rebuild→smoke→demo→submit.
+- **Result**: Scope narrowed from 91% to achievable 91% by cutting two blocked/untested tracks. Demo pipeline remains 0% — the singular risk. All code is green, production is live but stale by 32 tests.
+- **Connections**:
+  - follows -> thr_050 (5h later, drift still climbing)
+  - modified -> `.fates/analysis/current.md`
+  - descoped -> ERC-8004 registration, SKALE dual-chain
+
+---
+
+### thr_052 | Clotho C152 — Drift Watch, 10.0h to Deadline
+- **Timestamp**: 2026-02-14T08:00+10:00
+- **Agent**: Clotho (Claude Code, Opus 4.6)
+- **Intent**: Cycle 152 dashboard. 9h stall, drift 0.20. Awaiting Dom to drive final pipeline.
+- **Action**: Verified 350 tests passing (583ms), 0 errors. No code changes — pure observation. Dashboard updated.
+- **Result**: Steady state. All code green, production live but stale. Demo pipeline still 0% — the only risk left. Feature freeze remains the recommendation.
+- **Connections**:
+  - follows -> thr_051 (1.7h later, drift still rising)
+  - modified -> `.fates/analysis/current.md`
+
+---
+
+### thr_053 | Clotho C168 — Dom Active, 7.9h to Deadline
+- **Timestamp**: 2026-02-14T10:07+11:00
+- **Agent**: Clotho (Claude Code, Opus 4.6)
+- **Intent**: Cycle 168 dashboard. Dom's session active. 10.8h since last commit. Drift correcting to 0.25.
+- **Action**: Verified 350/350 tests (763ms), 0 errors. Dashboard updated. Uncommitted delta unchanged: 32 swarm tests + prompts/index.ts + utils.ts refactor. Sisyphus idle in pane 0:1.1 (all high-pri done).
+- **Result**: Human operator engaged. Critical path unchanged: commit → rebuild → smoke → demo → submit. 7.9h buffer is tight but sufficient if demo pipeline starts within 2h.
+- **Connections**:
+  - follows -> thr_052 (2h later, Dom now active)
+  - modified -> `.fates/analysis/current.md`
+
+---
+
+### thr_054 | Clotho C179 — Drift Rising, 7.2h to Deadline
+- **Timestamp**: 2026-02-14T09:49+10:00
+- **Agent**: Clotho (Claude Code, Opus 4.6)
+- **Intent**: Cycle 179 dashboard. Drift 0.35 (up from 0.32). 11h commit gap. Dom active but no commits yet.
+- **Action**: Verified 350/350 tests (624ms), 0 errors. Dashboard updated. State unchanged from C180/C168. Sisyphus idle.
+- **Result**: No delta. Clock is the only variable moving. 7.2h remaining. Demo pipeline still 0%. Feature freeze recommendation holds.
+- **Connections**:
+  - follows -> thr_053 (same session continuity)
+  - modified -> `.fates/analysis/current.md`
+
+---
+
+### thr_055 | Clotho C277 — Terminal Zone, 2.0h to Deadline
+- **Timestamp**: 2026-02-14T15:59+10:00
+- **Agent**: Clotho (Claude Code, Opus 4.6)
+- **Intent**: Cycle 277 dashboard. Drift 0.93. 18.2h commit gap. Terminal countdown.
+- **Action**: Verified 350/350 tests (532ms), 0 errors. 32 tests still uncommitted. No code changes since thr_054. Dashboard updated to reflect terminal drift.
+- **Result**: Execution gap is now the sole risk. Code is done. Everything is human-gated: commit, rebuild, demo video, DoraHacks form. If Dom acts in next 30min, submission is achievable.
+- **Connections**:
+  - follows -> thr_054 (5.2h later, drift now terminal)
+  - modified -> `.fates/analysis/current.md`
+
+---
+
+### thr_056 | Clotho C285 — Final Sprint: Commit, Rebuild, Deploy
+- **Timestamp**: 2026-02-14T16:33+10:00
+- **Agent**: Clotho (Claude Code, Opus 4.6)
+- **Intent**: Break 18.5h commit gap. Commit 32 uncommitted swarm tests + prompt registry. Rebuild production. Deploy.
+- **Action**: Committed `73ebd6a` (350 tests, swarm runners + orchestrator + Vite ?raw prompt registry). Pushed to GitHub. Docker build succeeded. Container running on :3000. Cloudflare quick tunnel live at `https://applicant-gourmet-arab-accommodations.trycloudflare.com`. Agent card, MCP, A2A all verified.
+- **Result**: 18.5h commit gap CLOSED. Production LIVE. Public URL accessible. Sisyphus writing DoraHacks submission copy in parallel. 1.4h to deadline.
+- **Connections**:
+  - resolves -> thr_055 (commit gap closed)
+  - follows -> thr_049 (Sisyphus session complete, now deployed fresh)
+  - unblocks -> DoraHacks submission (Sisyphus writing copy)
+
+---
+
+### thr_057 | Clotho C292 — 58min to Deadline, Sisyphus Polishing
+- **Timestamp**: 2026-02-14T17:01+10:00
+- **Agent**: Clotho (Claude Code, Opus 4.6)
+- **Intent**: Cycle 292. Final checkpoint. Assess what remains.
+- **Action**: Verified state: 350 tests green, production live, 9 files uncommitted (UnicornHero.svelte, landing page, submission docs, demo video script, bun.lock, package.json, fates meta). Sisyphus in OpenCode writing demo video script and ultrathinking about submission video structure. Latest commit `6e3f980` (BUIDL submission). Dashboard updated.
+- **Result**: Everything is human-gated. Code is done. Submission copy is done. Demo video script written but recording descoped. The only remaining actions: (1) commit 9 uncommitted files, (2) push, (3) submit DoraHacks form. 58 minutes is sufficient if Dom acts now.
+- **Connections**:
+  - follows -> thr_056 (28min later, Sisyphus still producing)
+  - modified -> `.fates/analysis/current.md`
+
+---
+
+### thr_058 | Clotho C293 — Test Verification, 51min to Deadline
+- **Timestamp**: 2026-02-14T17:08+10:00
+- **Agent**: Clotho (Claude Code, Opus 4.6)
+- **Intent**: Cycle 293. Verify test integrity after `bun test` showed 37 failures.
+- **Action**: Investigated `bun test` 37 failures — all A2A handler tests failing on `$env/dynamic/private` module resolution. Confirmed via `vitest run`: 350/350 GREEN (722ms). Verified same failures exist at commit `73ebd6a` under `bun test` — pre-existing `bun test` vs `vitest` discrepancy, NOT a regression. Demo video script and submission copy both complete. Dashboard updated.
+- **Result**: No regression. 350/350 vitest green. All deliverables ready. 51 minutes remaining. Three human-gated actions: commit+push, optional demo video recording, DoraHacks form submission.
+- **Connections**:
+  - follows -> thr_057 (7min later, test verification complete)
+  - modified -> `.fates/analysis/current.md`
+
+---

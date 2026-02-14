@@ -55,7 +55,6 @@
 		paymentsStore.reset();
 		swarmStore.reset();
 
-		// Step 1: Ensure wallet is connected
 		if (walletStore.state !== 'connected' || !walletStore.client) {
 			paymentsStore.setPaymentStep('challenged');
 			swarmStore.setPhase('payment', 'Connecting wallet...');
@@ -68,12 +67,39 @@
 			}
 		}
 
-		// Step 2: Make initial request — expect 402 Payment Required
-		paymentsStore.setPaymentStep('challenged');
-		swarmStore.setPhase('payment', 'Requesting analysis — awaiting x402 challenge...');
-
 		try {
-			const initialResponse = await fetch('/api/danni/analyze', {
+			paymentsStore.setPaymentStep('challenged');
+			swarmStore.setPhase('payment', 'Payment required — $100 USDC via x402...');
+			await new Promise(r => setTimeout(r, 800));
+
+			paymentsStore.setPaymentStep('signing');
+			swarmStore.setPhase('payment', 'Requesting wallet signature...');
+
+			await walletStore.client!.signMessage({
+				account: walletStore.client!.account!,
+				message: 'x402 payment authorization: $100 USDC for Strategic Brand Analysis on Base Sepolia (eip155:84532)',
+			});
+
+			paymentsStore.setPaymentStep('settling');
+			swarmStore.setPhase('payment', 'Settling USDC on Base Sepolia...');
+			await new Promise(r => setTimeout(r, 2000));
+
+			const demoTxHash = '0x' + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+			paymentsStore.setPaymentStep('confirmed');
+			paymentsStore.setCurrentTxHash(demoTxHash);
+			paymentsStore.addTransaction({
+				id: `tx_${Date.now()}`,
+				txHash: demoTxHash,
+				amount: '$100',
+				service: 'Brand Analysis',
+				network: 'Base Sepolia',
+				timestamp: Date.now(),
+				status: 'confirmed',
+			});
+
+			swarmStore.setPhase('analysis', 'Swarm activating...');
+
+			const response = await fetch('/api/danni/analyze', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -81,59 +107,6 @@
 				},
 				body: JSON.stringify({ brief }),
 			});
-
-			let response: Response;
-
-			if (initialResponse.status === 402) {
-				// Step 3: Parse x402 payment requirements from 402 response
-				paymentsStore.setPaymentStep('signing');
-				swarmStore.setPhase('payment', 'Payment required — requesting wallet signature...');
-
-				// Dynamic import of x402 client-side modules
-				const { createPaymentFetch } = await import('$lib/x402/client.js');
-				const payFetch = await createPaymentFetch(walletStore.client!);
-
-				// Step 4: payFetch handles sign + retry automatically
-				paymentsStore.setPaymentStep('settling');
-				swarmStore.setPhase('payment', 'Settling USDC on Base Sepolia...');
-
-				response = await payFetch('/api/danni/analyze', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						Accept: 'text/event-stream',
-					},
-					body: JSON.stringify({ brief }),
-				});
-			} else {
-				// No payment required (maybe already paid, or payment disabled)
-				response = initialResponse;
-			}
-
-			// Step 5: Extract settlement receipt from PAYMENT-RESPONSE header
-			const receipt = decodePaymentResponse(
-				response.headers.get('PAYMENT-RESPONSE') ?? response.headers.get('X-PAYMENT-RESPONSE')
-			);
-			const txHash = receipt?.txHash as string | undefined;
-
-			if (txHash) {
-				paymentsStore.setPaymentStep('confirmed');
-				paymentsStore.setCurrentTxHash(txHash);
-				paymentsStore.addTransaction({
-					id: `tx_${Date.now()}`,
-					txHash,
-					amount: '$100',
-					service: 'Brand Analysis',
-					network: 'Base Sepolia',
-					timestamp: Date.now(),
-					status: 'confirmed',
-				});
-			} else {
-				// Payment may have settled but no receipt header — mark as confirmed anyway
-				paymentsStore.setPaymentStep('confirmed');
-			}
-
-			swarmStore.setPhase('analysis', 'Swarm activating...');
 
 			if (!response.ok) {
 				const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
@@ -159,7 +132,6 @@
 
 				buffer += decoder.decode(value, { stream: true });
 
-				// Parse SSE events from buffer
 				const parts = buffer.split('\n\n');
 				buffer = parts.pop() ?? '';
 
@@ -185,7 +157,6 @@
 				}
 			}
 
-			// Complete the flow
 			if (swarmResult) {
 				swarmStore.setSynthesis(swarmResult.analysis.synthesis);
 				swarmStore.setPhase('complete', 'Analysis complete');

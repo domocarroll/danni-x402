@@ -115,7 +115,8 @@
 		flex-direction: column;
 		align-items: center;
 		gap: 0.375rem;
-		flex: 0 0 auto;
+		flex: 1 1 0;
+		min-width: 0;
 	}
 
 	.step-icon {
@@ -146,6 +147,10 @@
 		font-size: 0.65rem;
 		color: #555;
 		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 100%;
+		text-align: center;
 		transition: color 0.3s;
 	}
 
@@ -158,11 +163,11 @@
 	}
 
 	.connector {
-		flex: 1;
+		flex: 0 0 auto;
+		width: 24px;
 		height: 2px;
 		background: #1a1a1a;
-		min-width: 20px;
-		margin: 0 0.25rem;
+		margin: 0 0.125rem;
 		margin-bottom: 1.25rem;
 		transition: background 0.3s;
 	}

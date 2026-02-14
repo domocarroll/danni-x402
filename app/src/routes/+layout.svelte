@@ -38,7 +38,7 @@
 	:global(body) {
 		background: #0a0a0a;
 		color: #fafafa;
-		font-family: system-ui, -apple-system, sans-serif;
+		font-family: 'Inter', system-ui, -apple-system, sans-serif;
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
 	}

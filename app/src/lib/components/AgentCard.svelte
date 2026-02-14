@@ -74,13 +74,17 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: flex-start;
+		gap: 0.5rem;
 		margin-bottom: 0.5rem;
+		min-width: 0;
 	}
 
 	.name-row {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+		min-width: 0;
+		flex: 1 1 0;
 	}
 
 	.dot {
@@ -97,17 +101,22 @@
 	.name {
 		font-size: 0.875rem;
 		font-weight: 600;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.status-row {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+		flex-shrink: 0;
 	}
 
 	.status {
 		font-size: 0.75rem;
 		font-weight: 500;
+		white-space: nowrap;
 	}
 
 	.duration {

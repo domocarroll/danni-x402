@@ -1,4 +1,5 @@
 <script lang="ts">
+	import UnicornHero from '$lib/components/UnicornHero.svelte';
 </script>
 
 <svelte:head>
@@ -8,11 +9,16 @@
 
 <div class="landing">
 	<section class="hero">
-		<h1 class="wordmark">Danni</h1>
-		<p class="subtitle">Autonomous Brand Strategist</p>
-		<p class="tagline">
-			Five parallel AI analysts. Real market data. One unified strategic brief.
-		</p>
+		<div class="hero-bg">
+			<UnicornHero />
+		</div>
+		<div class="hero-content">
+			<h1 class="wordmark">Danni</h1>
+			<p class="acronym">Dedicated Autonomous Neural Networked Intelligence</p>
+			<p class="tagline">
+				Strategic intelligence, on-chain, whenever your agents need it.
+			</p>
+		</div>
 	</section>
 
 	<section class="pricing">
@@ -137,33 +143,76 @@
 	}
 
 	.hero {
+		position: relative;
 		text-align: center;
-		padding: 6rem 0 5rem;
+		padding: 0;
+		min-height: 80vh;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
 		animation: fadeUp 0.8s ease-out both;
+		margin-left: calc(-50vw + 50%);
+		margin-right: calc(-50vw + 50%);
+		width: 100vw;
+	}
+
+	.hero-bg {
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+	}
+
+	.hero-content {
+		position: relative;
+		z-index: 1;
+		padding: 6rem 2rem 5rem;
+	}
+
+	.hero-content::before {
+		content: '';
+		position: absolute;
+		inset: -4rem -8rem;
+		background: radial-gradient(
+			ellipse 55% 50% at 50% 48%,
+			rgba(10, 10, 10, 0.85) 0%,
+			rgba(10, 10, 10, 0.5) 40%,
+			transparent 70%
+		);
+		z-index: -1;
+		pointer-events: none;
 	}
 
 	.wordmark {
-		font-size: 4.5rem;
-		font-weight: 200;
-		letter-spacing: 0.3em;
+		font-family: 'Space Grotesk', system-ui, sans-serif;
+		font-size: 5rem;
+		font-weight: 300;
+		letter-spacing: 0.35em;
 		text-transform: uppercase;
 		margin: 0;
-		text-shadow: 0 0 60px rgba(99, 102, 241, 0.3);
+		text-shadow: 0 0 80px rgba(99, 102, 241, 0.35), 0 0 30px rgba(0, 0, 0, 0.9);
 	}
 
-	.subtitle {
-		font-size: 1.1rem;
-		color: #888;
-		margin: 0.5rem 0 2rem;
-		letter-spacing: 0.1em;
+	.acronym {
+		font-family: 'Space Grotesk', system-ui, sans-serif;
+		font-size: 0.7rem;
+		color: rgba(99, 102, 241, 0.7);
+		margin: 1rem 0 2.5rem;
+		letter-spacing: 0.3em;
+		text-transform: uppercase;
+		font-weight: 400;
+		text-shadow: 0 0 20px rgba(99, 102, 241, 0.2), 0 1px 8px rgba(0, 0, 0, 0.9);
 	}
 
 	.tagline {
-		font-size: 1.25rem;
-		line-height: 1.6;
-		color: #ccc;
-		max-width: 500px;
+		font-family: 'Inter', system-ui, sans-serif;
+		font-size: 1.15rem;
+		line-height: 1.7;
+		color: rgba(255, 255, 255, 0.6);
+		max-width: 480px;
+		font-weight: 300;
 		margin: 0 auto;
+		text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6);
 	}
 
 	.pricing {
