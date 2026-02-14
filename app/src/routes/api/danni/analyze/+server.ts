@@ -169,17 +169,29 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	const stream = new ReadableStream({
 		start(controller) {
+			let closed = false;
 			const enqueue = (event: string, data: unknown) => {
-				controller.enqueue(encoder.encode(formatSSE(event, data)));
+				if (closed) return;
+				try {
+					controller.enqueue(encoder.encode(formatSSE(event, data)));
+				} catch {
+					closed = true;
+				}
+			};
+			const safeClose = () => {
+				if (!closed) {
+					closed = true;
+					try { controller.close(); } catch { /* already closed */ }
+				}
 			};
 
 			// Demo mode: emit fake but realistic SSE events without calling the real swarm
 			if (USE_DEMO_MODE) {
 				emitDemoSwarm(enqueue, brief)
-					.then(() => controller.close())
+					.then(() => safeClose())
 					.catch((err) => {
 						enqueue('error', { message: err instanceof Error ? err.message : 'Demo error' });
-						controller.close();
+						safeClose();
 					});
 				return;
 			}
@@ -207,12 +219,12 @@ export const POST: RequestHandler = async ({ request }) => {
 
 					// Send the full result
 					enqueue('result', result);
-					controller.close();
+					safeClose();
 				})
 				.catch((error) => {
 					const { message } = classifyError(error);
 					enqueue('error', { message });
-					controller.close();
+					safeClose();
 				});
 		}
 	});
