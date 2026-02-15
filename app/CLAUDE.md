@@ -100,7 +100,7 @@ FACILITATORS.DEFAULT = 'https://x402.org/facilitator'
 ```
 WALLET_ADDRESS=0x494Ee54AA00e645D27dC0dF4b7aaE707e235A544
 WALLET_PRIVATE_KEY=<from .env>
-APIFY_API_KEY=apify_api_vG8zDDhSyrMM8uzmVeBTPXkDeRNBRf12kk1B
+APIFY_API_KEY=<from .env>
 ```
 
 ## Interface Contracts
